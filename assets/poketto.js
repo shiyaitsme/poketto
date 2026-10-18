@@ -204,3 +204,11 @@
   window.Poketto = { repaint: layout };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
+
+/* favicon: every page that loads this script gets the Poketto icon, even without the link tags */
+(function () {
+  if (document.querySelector('link[rel~="icon"]')) return;
+  var l = document.createElement('link');
+  l.rel = 'icon'; l.type = 'image/svg+xml'; l.href = '/favicon.svg';
+  document.head.appendChild(l);
+})();
