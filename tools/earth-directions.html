@@ -1,0 +1,437 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>地球上的东南西北</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600&display=swap">
+<style>
+/* Layout: one column, the 3D stage leads, season cards double as the selector, controls sit below it */
+:root{
+  --bg:#F1F4F8; --surface:#FFFFFF; --stage:#E6ECF4; --ink:#16202B; --muted:#586677; --line:#D3DCE6;
+  --accent:#C9506E; --accent-soft:#F8E3E9; --north:#5B58D8; --east:#0E8F68; --sun:#D9791A; --focus:#2B6CB0;
+  --font-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --font-display:"Noto Serif SC","Songti SC","STSong",serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D131A; --surface:#151D27; --stage:#101821; --ink:#E7ECF2; --muted:#98A5B4; --line:#263241;
+    --accent:#E5748E; --accent-soft:#3A2230; --north:#9A97F5; --east:#3CC59B; --sun:#F0A044; --focus:#7BB0EA;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D131A; --surface:#151D27; --stage:#101821; --ink:#E7ECF2; --muted:#98A5B4; --line:#263241;
+  --accent:#E5748E; --accent-soft:#3A2230; --north:#9A97F5; --east:#3CC59B; --sun:#F0A044; --focus:#7BB0EA;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--font-body); font-size:15px; line-height:1.7;
+  padding-block:28px 48px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+.page{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:18px}
+h1{font-family:var(--font-display); font-weight:600; font-size:clamp(26px,5vw,34px); line-height:1.25; margin:0; text-wrap:balance}
+h2{font-size:16px; font-weight:700; margin:0}
+p{margin:0}
+.lead{color:var(--muted); max-width:62ch; margin-top:8px}
+.stage{position:relative; border:1px solid var(--line); border-radius:14px; background:var(--stage); overflow:hidden; touch-action:none; min-height:320px}
+.badge{position:absolute; top:12px; left:14px; font-size:13px; font-weight:500; color:var(--ink); pointer-events:none}
+.badge small{color:var(--muted); font-weight:400; margin-left:6px}
+.hint{position:absolute; bottom:10px; right:14px; font-size:12px; color:var(--muted); pointer-events:none}
+.nogl{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; text-align:center; color:var(--muted)}
+.seasons{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px}
+.card{
+  font:inherit; color:var(--ink); text-align:left; cursor:pointer; background:var(--surface);
+  border:1px solid var(--line); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:2px; min-width:0;
+}
+.card[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft)}
+.card:hover{border-color:var(--accent)}
+.c-name{font-weight:700; font-size:16px}
+.c-date{font-size:12px; color:var(--muted); margin-bottom:6px}
+.c-row{display:flex; justify-content:space-between; gap:10px; font-size:13px}
+.c-row b{font-weight:400; color:var(--muted)}
+.c-row i{font-style:normal; font-family:var(--font-mono); font-size:13px; text-align:right}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:12px}
+.read{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap}
+.clock{font-family:var(--font-mono); font-size:34px; font-weight:500; line-height:1; font-variant-numeric:tabular-nums}
+.sun-line{font-weight:500; min-width:0}
+.sub{font-family:var(--font-mono); font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums}
+.row{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.row.between{justify-content:space-between}
+input[type=range]{width:100%; accent-color:var(--accent); margin:0}
+.chip{
+  font:inherit; font-size:13px; color:var(--ink); background:var(--bg); border:1px solid var(--line);
+  border-radius:8px; padding:4px 11px; cursor:pointer;
+}
+.chip:hover{border-color:var(--accent)}
+.chip.on{border-color:var(--accent); background:var(--accent-soft)}
+.lab{font-size:13px; color:var(--muted)}
+.lab strong{color:var(--ink); font-weight:500}
+label.check{display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); cursor:pointer}
+label.check input{accent-color:var(--accent); margin:0}
+button:focus-visible,input:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+.notes{display:flex; flex-direction:column; gap:10px; max-width:64ch}
+.notes p{color:var(--muted)}
+.notes p b{color:var(--ink); font-weight:700}
+.dotN{color:var(--north); font-weight:700}
+.dotE{color:var(--east); font-weight:700}
+</style>
+
+<main class="page">
+  <header>
+    <h1>地球上的东南西北</h1>
+    <p class="lead">站在地球上的人，东和西是怎么定下来的？拖动画面转视角，拉动时间条，看他被自转带着走，太阳从哪边升、哪边落。</p>
+  </header>
+
+  <section class="stage" id="stage" aria-label="可拖动旋转的3D地球">
+    <div class="badge" id="badge"></div>
+    <div class="hint">拖动旋转</div>
+    <div class="nogl" id="nogl" hidden>这个环境打不开3D画面，下面的日出日落数据仍然可用。</div>
+  </section>
+
+  <div class="seasons" id="seasons" role="group" aria-label="选择季节">
+    <button class="card" data-k="winter" aria-pressed="true">
+      <span class="c-name">冬至</span><span class="c-date">12月22日前后 · 冬半年中点</span>
+      <span class="c-row"><b>日出</b><i data-f="rise"></i></span>
+      <span class="c-row"><b>日落</b><i data-f="set"></i></span>
+      <span class="c-row"><b>白天</b><i data-f="day"></i></span>
+    </button>
+    <button class="card" data-k="equinox" aria-pressed="false">
+      <span class="c-name">春分 / 秋分</span><span class="c-date">3月21日、9月23日前后 · 半年分界</span>
+      <span class="c-row"><b>日出</b><i data-f="rise"></i></span>
+      <span class="c-row"><b>日落</b><i data-f="set"></i></span>
+      <span class="c-row"><b>白天</b><i data-f="day"></i></span>
+    </button>
+    <button class="card" data-k="summer" aria-pressed="false">
+      <span class="c-name">夏至</span><span class="c-date">6月21日前后 · 夏半年中点</span>
+      <span class="c-row"><b>日出</b><i data-f="rise"></i></span>
+      <span class="c-row"><b>日落</b><i data-f="set"></i></span>
+      <span class="c-row"><b>白天</b><i data-f="day"></i></span>
+    </button>
+  </div>
+
+  <section class="panel" aria-label="时间">
+    <div class="read">
+      <div class="clock" id="clock">12:00</div>
+      <div class="sun-line" id="sunline"></div>
+    </div>
+    <div class="sub" id="sunsub"></div>
+    <input type="range" id="time" min="0" max="24" step="0.05" value="12" aria-label="当地太阳时">
+    <div class="row">
+      <button class="chip" data-t="0">0:00</button>
+      <button class="chip" data-t="6">6:00</button>
+      <button class="chip" data-t="12">12:00</button>
+      <button class="chip" data-t="18">18:00</button>
+      <button class="chip" id="play">播放一天</button>
+      <label class="check"><input type="checkbox" id="follow">镜头跟着人</label>
+    </div>
+    <p class="lab">时间是当地太阳时：12:00 就是太阳最高的时刻，不是手表上的北京时间。</p>
+  </section>
+
+  <section class="panel" aria-label="站的位置">
+    <div class="row between">
+      <h2>人站的纬度</h2>
+      <span class="lab" id="latlab"><strong>北纬 40°</strong></span>
+    </div>
+    <input type="range" id="lat" min="-65" max="65" step="1" value="40" aria-label="纬度">
+    <div class="row">
+      <button class="chip" data-lat="40">北京</button>
+      <button class="chip" data-lat="30">黄石</button>
+      <button class="chip" data-lat="0">赤道</button>
+      <button class="chip" data-lat="-34">悉尼</button>
+    </div>
+  </section>
+
+  <section class="notes">
+    <h2>怎么读这张图</h2>
+    <p><b>东西来自自转。</b>地球自西向东转，站在地上的人被带向东。他转过去、背离太阳进入黑夜时，太阳就在他的西边，这就是日落。</p>
+    <p><b>南北沿着地轴。</b>图里<span class="dotN">紫色箭头</span>永远指向北极，<span class="dotE">绿色箭头</span>指向东，灰色是它们的反方向。红线是赤道和人所在的经线。</p>
+    <p><b>偏南还是偏北，看太阳直射在哪。</b>夏半年直射北半球，北半球是东北升、西北落；冬半年是东南升、西南落；南半球正好相反。</p>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  var DEG = Math.PI/180, TILT = 23.4*DEG;
+  var state = {season:'winter', lat:40, T:12, playing:false, follow:false};
+  var SEASONS = {
+    winter:  {name:'冬至', tag:'冬半年', dec:-23.4},
+    equinox: {name:'春分 / 秋分', tag:'半年分界', dec:0},
+    summer:  {name:'夏至', tag:'夏半年', dec:23.4}
+  };
+  var hooks = {season:function(){}, lat:function(){}};
+
+  function $(id){ return document.getElementById(id); }
+  function pad(n){ return (n<10?'0':'')+n; }
+
+  function solar(decD, latD){
+    var d = decD*DEG, p = latD*DEG, tt = Math.tan(p)*Math.tan(d);
+    if(tt >= 1) return {polar:'day'};
+    if(tt <= -1) return {polar:'night'};
+    return {A: Math.acos(Math.sin(d)/Math.cos(p))/DEG, day: 2*Math.acos(-tt)/DEG/15};
+  }
+  function riseText(A){
+    var off = Math.round(Math.abs(A-90));
+    if(off === 0) return '正东';
+    return A < 90 ? '东偏北 '+off+'°' : '东偏南 '+off+'°';
+  }
+  function setText(A){
+    var off = Math.round(Math.abs(A-90));
+    if(off === 0) return '正西';
+    return A < 90 ? '西偏北 '+off+'°' : '西偏南 '+off+'°';
+  }
+  function dayText(h){
+    var m = Math.round(h*60);
+    return Math.floor(m/60)+' 小时 '+pad(m%60)+' 分';
+  }
+  function latText(l){
+    if(l === 0) return '赤道 0°';
+    return (l>0 ? '北纬 ' : '南纬 ')+Math.abs(l)+'°';
+  }
+
+  var cards = document.querySelectorAll('.card');
+  function updateCards(){
+    for(var i=0;i<cards.length;i++){
+      var c = cards[i], k = c.getAttribute('data-k'), r = solar(SEASONS[k].dec, state.lat);
+      var rise = c.querySelector('[data-f=rise]'), set = c.querySelector('[data-f=set]'), day = c.querySelector('[data-f=day]');
+      if(r.polar){
+        var t = r.polar === 'day' ? '极昼' : '极夜';
+        rise.textContent = t; set.textContent = t; day.textContent = r.polar === 'day' ? '24 小时' : '0 小时';
+      } else {
+        rise.textContent = riseText(r.A); set.textContent = setText(r.A); day.textContent = dayText(r.day);
+      }
+      c.setAttribute('aria-pressed', k === state.season ? 'true' : 'false');
+    }
+    $('badge').innerHTML = SEASONS[state.season].name + '<small>' + SEASONS[state.season].tag + '</small>';
+  }
+  function updateLatLabel(){
+    $('latlab').innerHTML = '<strong>' + latText(state.lat) + '</strong>';
+  }
+  function setSeason(k){ state.season = k; updateCards(); hooks.season(); }
+  function setLat(v){
+    state.lat = v; $('lat').value = v; updateLatLabel(); updateCards(); hooks.lat();
+  }
+  function setClock(t){
+    var hh = Math.floor(t) % 24, mm = Math.floor((t%1)*60);
+    $('clock').textContent = hh+':'+pad(mm);
+  }
+
+  for(var i=0;i<cards.length;i++){
+    (function(c){ c.addEventListener('click', function(){ setSeason(c.getAttribute('data-k')); }); })(cards[i]);
+  }
+  $('lat').addEventListener('input', function(){ setLat(parseFloat(this.value)); });
+  var latChips = document.querySelectorAll('[data-lat]');
+  for(var j=0;j<latChips.length;j++){
+    (function(b){ b.addEventListener('click', function(){ setLat(parseFloat(b.getAttribute('data-lat'))); }); })(latChips[j]);
+  }
+  $('time').addEventListener('input', function(){ state.T = parseFloat(this.value); });
+  var timeChips = document.querySelectorAll('[data-t]');
+  for(var k2=0;k2<timeChips.length;k2++){
+    (function(b){ b.addEventListener('click', function(){ state.T = parseFloat(b.getAttribute('data-t')); $('time').value = state.T; }); })(timeChips[k2]);
+  }
+  $('play').addEventListener('click', function(){
+    state.playing = !state.playing; this.textContent = state.playing ? '暂停' : '播放一天';
+  });
+  $('follow').addEventListener('change', function(){ state.follow = this.checked; });
+
+  updateLatLabel(); updateCards(); setClock(state.T);
+
+  if(typeof THREE === 'undefined'){ $('nogl').hidden = false; return; }
+  var renderer;
+  try{
+    renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  }catch(e){ $('nogl').hidden = false; return; }
+
+  var stage = $('stage');
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  var dom = renderer.domElement;
+  dom.style.display = 'block'; dom.style.touchAction = 'none';
+  stage.insertBefore(dom, stage.firstChild);
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+  var theta = 0, phi = 0.3, rad = 5.4;
+  function placeCam(){
+    camera.position.set(rad*Math.cos(phi)*Math.sin(theta), rad*Math.sin(phi), rad*Math.cos(phi)*Math.cos(theta));
+    camera.lookAt(0,0,0);
+  }
+  function resize(){
+    var W = stage.clientWidth || 360;
+    var H = Math.round(Math.max(320, Math.min(460, W*0.85)));
+    stage.style.height = H+'px';
+    renderer.setSize(W, H);
+    camera.aspect = W/H; camera.updateProjectionMatrix();
+    rad = Math.max(5.4, 6.3/camera.aspect);
+    placeCam();
+  }
+
+  var COL = {north:'#6C69E0', east:'#14A37A', gray:'#7C8794', sun:'#E58A1F'};
+  var FONT = '"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif';
+  function label(txt, col, w, h, cw, ch, px){
+    var c = document.createElement('canvas'); c.width = cw; c.height = ch;
+    var x = c.getContext('2d');
+    x.font = '700 '+px+'px '+FONT; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillStyle = col; x.fillText(txt, cw/2, ch/2+2);
+    var s = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c), transparent:true}));
+    s.scale.set(w, h, 1);
+    return s;
+  }
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.32));
+  var sunL = new THREE.DirectionalLight(0xffffff, 0.95);
+  sunL.position.set(-5, 0, 0);
+  scene.add(sunL);
+
+  var cv = document.createElement('canvas'); cv.width = 1024; cv.height = 512;
+  var g = cv.getContext('2d');
+  for(var a=0;a<12;a++) for(var b=0;b<6;b++){
+    g.fillStyle = ((a+b)%2) ? '#4F8FC4' : '#6AA6D6';
+    g.fillRect(a*1024/12, b*512/6, 1024/12+1, 512/6+1);
+  }
+  g.strokeStyle = 'rgba(12,68,124,0.55)'; g.lineWidth = 2;
+  for(var m=0;m<=12;m++){ g.beginPath(); g.moveTo(m*1024/12,0); g.lineTo(m*1024/12,512); g.stroke(); }
+  for(var n=0;n<=6;n++){ g.beginPath(); g.moveTo(0,n*512/6); g.lineTo(1024,n*512/6); g.stroke(); }
+  g.strokeStyle = '#D8455F'; g.lineWidth = 5;
+  g.beginPath(); g.moveTo(0,256); g.lineTo(1024,256); g.stroke();
+  g.beginPath(); g.moveTo(256,0); g.lineTo(256,512); g.stroke();
+
+  var earthG = new THREE.Group();
+  scene.add(earthG);
+  var mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 48), new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cv)}));
+  earthG.add(mesh);
+  earthG.add(new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,-1.5,0), new THREE.Vector3(0,1.5,0)]),
+    new THREE.LineBasicMaterial({color:0x7C8794})
+  ));
+  var npl = label('北极', COL.gray, 1.0, 0.25, 256, 64, 44); npl.position.set(0, 1.72, 0); earthG.add(npl);
+  var spl = label('南极', COL.gray, 1.0, 0.25, 256, 64, 44); spl.position.set(0, -1.72, 0); earthG.add(spl);
+
+  [-0.8,-0.4,0,0.4,0.8].forEach(function(y){
+    var endX = -Math.sqrt(1-y*y) - 0.04, startX = -2.0;
+    scene.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(startX,y,0), endX-startX, 0xE58A1F, 0.14, 0.08));
+  });
+  var sunlab = label('太阳光', COL.sun, 0.9, 0.3, 192, 64, 40); sunlab.position.set(-1.55, 1.15, 0); scene.add(sunlab);
+
+  var S = new THREE.Vector3(-1,0,0);
+  var nAxis = new THREE.Vector3(Math.sin(TILT), Math.cos(TILT), 0);
+  var P0 = new THREE.Vector3(), Nl = new THREE.Vector3(), El = new THREE.Vector3(1,0,0);
+  var markerG = null, h0 = 0;
+
+  function hourAngleDeg(){
+    scene.updateMatrixWorld(true);
+    var P = P0.clone().applyMatrix4(mesh.matrixWorld);
+    var se = S.clone().sub(nAxis.clone().multiplyScalar(S.dot(nAxis)));
+    var pe = P.clone().sub(nAxis.clone().multiplyScalar(P.dot(nAxis)));
+    var cr = new THREE.Vector3().crossVectors(se, pe);
+    return Math.atan2(nAxis.dot(cr), se.dot(pe))/DEG;
+  }
+  function calibrate(){ mesh.rotation.y = 0; h0 = hourAngleDeg(); }
+
+  function buildMarker(){
+    if(markerG) mesh.remove(markerG);
+    markerG = new THREE.Group(); mesh.add(markerG);
+    var lat = state.lat*DEG;
+    P0.set(0, Math.sin(lat), Math.cos(lat));
+    Nl.set(0, Math.cos(lat), -Math.sin(lat));
+    El.set(1, 0, 0);
+    var org = P0.clone().multiplyScalar(1.012);
+    var plane = new THREE.Mesh(
+      new THREE.CircleGeometry(0.46, 40),
+      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.28, side:THREE.DoubleSide, depthWrite:false})
+    );
+    plane.position.copy(org);
+    plane.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), P0.clone().normalize());
+    markerG.add(plane);
+    var dot = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), new THREE.MeshBasicMaterial({color:0xD8455F}));
+    dot.position.copy(org); markerG.add(dot);
+    function arrow(d, len, hex, txt, col){
+      var dn = d.clone().normalize();
+      markerG.add(new THREE.ArrowHelper(dn, org, len, hex, 0.12, 0.07));
+      var l = label(txt, col, 0.28, 0.28, 96, 96, 64);
+      l.position.copy(org).add(dn.clone().multiplyScalar(len+0.15));
+      markerG.add(l);
+    }
+    arrow(Nl, 0.55, 0x6C69E0, '北', COL.north);
+    arrow(El, 0.55, 0x14A37A, '东', COL.east);
+    arrow(Nl.clone().negate(), 0.32, 0x7C8794, '南', COL.gray);
+    arrow(El.clone().negate(), 0.32, 0x7C8794, '西', COL.gray);
+    calibrate();
+  }
+
+  function applySeason(){
+    var s = Math.sin(TILT), c = Math.cos(TILT);
+    if(state.season === 'winter') nAxis.set(s, c, 0);
+    else if(state.season === 'summer') nAxis.set(-s, c, 0);
+    else nAxis.set(0, c, s);
+    earthG.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), nAxis);
+    calibrate();
+  }
+  hooks.season = applySeason;
+  hooks.lat = buildMarker;
+  applySeason();
+  buildMarker();
+
+  var names8 = ['正北','东北','正东','东南','正南','西南','正西','西北'];
+  var lastLine = '', lastSub = '', lastClock = '';
+  function readout(){
+    var P = P0.clone().applyMatrix4(mesh.matrixWorld).normalize();
+    var Ew = El.clone().transformDirection(mesh.matrixWorld);
+    var Nw = Nl.clone().transformDirection(mesh.matrixWorld);
+    var e = S.dot(Ew), nn = S.dot(Nw), u = Math.max(-1, Math.min(1, S.dot(P)));
+    var el = Math.asin(u)/DEG, az = (Math.atan2(e, nn)/DEG + 360) % 360;
+    var line, sub;
+    if(el > 0){
+      line = '太阳在' + names8[Math.round(az/45)%8] + '方';
+      if(el < 8) line += state.T < 12 ? '，刚升起' : '，快落山了';
+      sub = '高度 ' + Math.round(el) + '° · 方位角 ' + Math.round(az) + '°（0°北 90°东 180°南 270°西）';
+    } else {
+      line = '太阳在地平线下，现在是夜晚';
+      sub = '太阳高度 ' + Math.round(el) + '°';
+    }
+    var ck = Math.floor(state.T)%24 + ':' + pad(Math.floor((state.T%1)*60));
+    if(ck !== lastClock){ $('clock').textContent = ck; lastClock = ck; }
+    if(line !== lastLine){ $('sunline').textContent = line; lastLine = line; }
+    if(sub !== lastSub){ $('sunsub').textContent = sub; lastSub = sub; }
+    return P;
+  }
+
+  var dragging = false, lx = 0, ly = 0;
+  dom.addEventListener('pointerdown', function(ev){ dragging = true; lx = ev.clientX; ly = ev.clientY; dom.setPointerCapture(ev.pointerId); });
+  dom.addEventListener('pointermove', function(ev){
+    if(!dragging) return;
+    theta -= (ev.clientX-lx)*0.008;
+    phi += (ev.clientY-ly)*0.008;
+    phi = Math.max(-1.4, Math.min(1.4, phi));
+    lx = ev.clientX; ly = ev.clientY; placeCam();
+  });
+  dom.addEventListener('pointerup', function(){ dragging = false; });
+  dom.addEventListener('pointercancel', function(){ dragging = false; });
+
+  resize();
+  if(window.ResizeObserver){ new ResizeObserver(resize).observe(stage); } else { window.addEventListener('resize', resize); }
+
+  var last = performance.now();
+  function frame(now){
+    var dt = Math.min(0.1, (now-last)/1000); last = now;
+    if(state.playing){ state.T = (state.T + dt*1.5) % 24; $('time').value = state.T; }
+    mesh.rotation.y = ((state.T-12)*15 - h0)*DEG;
+    scene.updateMatrixWorld(true);
+    var P = readout();
+    if(state.follow && !dragging){
+      var tt = Math.atan2(P.x, P.z);
+      var d = ((tt-theta+Math.PI) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI) - Math.PI;
+      theta += d*0.1;
+      phi += (Math.max(-1.2, Math.min(1.2, Math.asin(P.y)+0.15)) - phi)*0.1;
+      placeCam();
+    }
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>

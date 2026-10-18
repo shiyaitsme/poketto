@@ -1,8 +1,8 @@
 [
   {
-    "title": "第一个小工具",
-    "subject": "待分类",
-    "description": "即将收录，目前可在 Claude 上打开。",
-    "url": "https://claude.ai/artifact/GR9nNWZjGNbzTN3kGxyJng"
+    "title": "地球上的东南西北",
+    "subject": "地理",
+    "description": "拖动 3D 地球、拉动时间条，看东西南北怎么来、太阳在不同季节和纬度从哪边升落。",
+    "url": "tools/earth-directions.html"
   }
 ]

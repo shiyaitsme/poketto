@@ -33,9 +33,9 @@ tools.json        工具清单（标题、学科、简介、链接）
 
 首页会自动读取 `tools.json` 并显示新工具。
 
-## 计划收录
+## 已收录 / 计划收录
 
-- [ ] 第一个工具：<https://claude.ai/artifact/GR9nNWZjGNbzTN3kGxyJng>（待迁移进 `tools/`）
+- [x] 地理 · 地球上的东南西北（`tools/earth-directions.html`）
 
 ## 部署
 
