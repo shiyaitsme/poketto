@@ -223,6 +223,30 @@ var TIMELINE = {
   .same .none { font-size: 13px; color: var(--ink-2); }
   .notes { display: grid; gap: 12px; max-width: 680px; }
   .notes code { font-family: var(--mono); font-size: 12.5px; background: rgba(185,224,76,.35); padding: 0 4px; border-radius: 2px; }
+  .addf { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px 18px; align-items: start; }
+  .addf [hidden] { display: none; }
+  .addf .wide { grid-column: 1 / -1; }
+  .fld { display: grid; gap: 4px; min-width: 0; font-size: 13px; color: var(--ink-2); }
+  .fld > span { font-weight: 700; color: var(--ink); }
+  .fld input[type=text], .fld input[type=number], .fld input[type=password], .fld select, .fld textarea {
+    font: inherit; font-size: 15px; color: var(--ink); width: 100%; min-width: 0; padding: 7px 10px;
+    border: 1.5px solid var(--ink); border-radius: 3px; background: rgba(255,255,255,.55);
+  }
+  .fld textarea { resize: vertical; }
+  .fld input:focus-visible, .fld select:focus-visible, .fld textarea:focus-visible, .addbtn:focus-visible { outline: 2px solid var(--leaf); outline-offset: 2px; }
+  .yr { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; }
+  .addbtn {
+    appearance: none; margin: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: 15px; color: var(--ink);
+    padding: 8px 20px; border: 1.5px solid var(--ink); border-radius: 3px; background: var(--lime); box-shadow: 2px 3px 0 rgba(29,30,27,.2);
+  }
+  .addbtn:hover { background: var(--leaf); }
+  .mine-list { margin: 6px 0 8px; padding: 0; list-style: none; display: grid; gap: 4px; }
+  .mine-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .mine-go { all: unset; cursor: pointer; font-size: 14px; min-width: 0; }
+  .mine-go em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin-left: 8px; }
+  .mine-go:hover, .mine-go:focus-visible { background: linear-gradient(transparent 60%, rgba(185,224,76,.7) 60%); }
+  .mine-del { all: unset; cursor: pointer; flex: none; font-size: 13px; color: var(--vermilion); text-decoration: underline; padding: 2px 4px; }
+  .mine-del:focus-visible, .mine-go:focus-visible { outline: 2px solid var(--leaf); outline-offset: 2px; }
   @media (max-width: 560px) {
     .detail { padding: 14px 16px; }
     .tl-hint { display: none; }
@@ -273,12 +297,44 @@ var TIMELINE = {
 
   <section class="detail pk-br pk-veil" id="detail" aria-live="polite"></section>
 
+  <section class="detail pk-br pk-veil" aria-label="添加我自己的事件">
+    <div class="pk-h2"><small>Add yours</small>加上我自己的事件</div>
+    <p class="pk-note">想对照自己的经历、一个家族、一门学科都可以：填好点“添加”，它就出现在上面的时间线上。</p>
+    <form id="addf" class="addf" autocomplete="off">
+      <label class="fld wide"><span>名字</span><input id="f-title" type="text" maxlength="30" placeholder="比如：我出生"></label>
+      <label class="fld"><span>放在哪一行</span><select id="f-track"></select></label>
+      <label class="fld" id="f-newbox" hidden><span>新轨道的名字</span><input id="f-newtrack" type="text" maxlength="12" value="我的"></label>
+      <label class="fld"><span>是一个时间点，还是一段时间</span>
+        <select id="f-kind"><option value="at">某一年发生的事</option><option value="span">持续一段时间</option></select></label>
+      <div class="fld"><span>年份</span>
+        <div class="yr"><select id="f-era1" aria-label="公元前或公元"><option value="ad">公元</option><option value="bc">公元前</option></select>
+        <input id="f-y1" type="number" inputmode="numeric" min="1" max="3500" placeholder="如 1995" aria-label="年份"></div></div>
+      <div class="fld" id="f-span" hidden><span>结束年份</span>
+        <div class="yr"><select id="f-era2" aria-label="结束年份公元前或公元"><option value="ad">公元</option><option value="bc">公元前</option></select>
+        <input id="f-y2" type="number" inputmode="numeric" min="1" max="3500" placeholder="如 2005" aria-label="结束年份"></div>
+        <label class="pk-check"><input id="f-now" type="checkbox">一直到今天</label></div>
+      <label class="fld wide"><span>说明（可以不写）</span><textarea id="f-note" rows="2" maxlength="300" placeholder="点开这一条时会显示"></textarea></label>
+      <label class="fld wide" id="f-keybox" hidden><span id="f-keylab">口令</span><input id="f-key" type="password" autocomplete="off" maxlength="100" placeholder="至少 6 位"></label>
+      <div class="wide ctrl between">
+        <label class="pk-check"><input id="f-approx" type="checkbox">年份不确定（会用虚线标出）</label>
+        <button class="addbtn" type="submit">添加到时间线</button>
+      </div>
+      <p class="lab wide" id="f-msg" role="status"></p>
+      <p class="lab wide" id="f-store" hidden>这个浏览器不允许保存，添加的内容刷新页面后会消失。</p>
+    </form>
+    <div id="mine" hidden>
+      <div class="pk-label">Mine · 我加的</div>
+      <ul class="mine-list" id="mine-list"></ul>
+      <p class="lab" id="mine-note">这些内容只存在这台设备的浏览器里，换设备或清除浏览器数据后不会保留。</p>
+    </div>
+  </section>
+
   <section class="notes">
     <div class="pk-h2"><small>About the dates</small>关于年代</div>
     <p class="pk-note">虚线框、虚线圆点的条目年代<b>不确定</b>，说明里会写“约”。夏、商、西周初年采用“夏商周断代工程”2000年的年表，至今仍有争议；更早的年代来自考古测年，只是大致范围。</p>
     <p class="pk-note">没有“公元0年”：公元前1年的下一年就是公元1年。这条时间线是按数字画的，所以公元前后交界处会差一年，放大到最细也看不出来。</p>
-    <div class="pk-h2"><small>Make your own</small>加自己的事件</div>
-    <p class="pk-note">所有数据都写在这个网页文件开头的 <code>TIMELINE</code> 里。加一条事件就是加一行，比如 <code>{ track: 'cn', at: 1949, title: '……', note: '……' }</code>；也可以新加一条轨道，放自己的经历、一门学科的发展，或者任何想对照的主题。</p>
+    <div class="pk-h2"><small>Who can edit</small>谁能添加</div>
+    <p class="pk-note">添加和删除要输入口令。第一次添加时填的口令就是以后的口令，请记住它。已添加的内容所有人都能看到。</p>
   </section>
 
   <footer class="pk-foot">
@@ -292,10 +348,41 @@ var TIMELINE = {
 
 <script>
 (function(){
-  var D = TIMELINE, $ = function(id){ return document.getElementById(id); };
+  var BASE = TIMELINE, $ = function(id){ return document.getElementById(id); };
+  var D = { range: BASE.range, tracks: [], eras: BASE.eras, events: [] };
+  var STORE = 'poketto-timeline-mine', USER = { tracks: [], events: [] }, storeOk = true;
+  try {
+    var raw = localStorage.getItem(STORE), u = raw && JSON.parse(raw);
+    if(u && Array.isArray(u.tracks) && Array.isArray(u.events)) USER = u;
+  } catch(_){ storeOk = false; }
+  function save(){ try { localStorage.setItem(STORE, JSON.stringify(USER)); return true; } catch(_){ storeOk = false; return false; } }
   var NOW = new Date().getFullYear();
   var R0 = D.range[0], R1 = Math.max(D.range[1], NOW + 4);
   var MIN_SPAN = 12;
+  var API = '/api/timeline', KEYSTORE = 'poketto-timeline-key', cloud = false, claimed = false;
+  function safeId(s){ return String(s == null ? '' : s).replace(/[^a-z0-9]/gi, '').slice(0, 24); }
+  function yr(n){ return typeof n === 'number' && isFinite(n) && n !== 0 ? Math.round(n) : null; }
+  // data from storage or the server is never trusted: keep only well-formed fields
+  function clean(d){
+    var out = { tracks: [], events: [] }, ok = {};
+    BASE.tracks.forEach(function(t){ ok[t.id] = 1; });
+    if(!d) return out;
+    (Array.isArray(d.tracks) ? d.tracks : []).slice(0, 30).forEach(function(t){
+      var id = t && safeId(t.id); if(!id || ok[id]) return; ok[id] = 1;
+      out.tracks.push({ id: id, name: String(t.name || '').slice(0, 12) || '我的', en: '', color: /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : '#f08a7a' });
+    });
+    (Array.isArray(d.events) ? d.events : []).slice(0, 1000).forEach(function(e){
+      if(!e || !ok[e.track] || !String(e.title || '').trim()) return;
+      var c = { uid: safeId(e.uid) || ('e' + Math.random().toString(36).slice(2, 8)), mine: true, track: e.track,
+        title: String(e.title).slice(0, 30), note: String(e.note || '').slice(0, 300), approx: !!e.approx };
+      if(e.at != null){ c.at = yr(e.at); if(c.at == null) return; }
+      else { c.from = yr(e.from); if(c.from == null) return; c.to = e.to == null ? null : yr(e.to); if(c.to != null && c.to < c.from) return; }
+      out.events.push(c);
+    });
+    out.tracks = out.tracks.filter(function(t){ return out.events.some(function(e){ return e.track === t.id; }); });
+    return out;
+  }
+  USER = clean(USER);
   var SPAN_H = 26, PT_H = 22, NAME_H = 26, MINI_H = 14;
   var POINT_LANES = 4;
 
@@ -322,6 +409,10 @@ var TIMELINE = {
   var measure = document.createElement('canvas').getContext('2d');
   function textW(s){ measure.font = '500 12.5px "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif'; return measure.measureText(s).width; }
 
+  function build(){
+  rowsEl.innerHTML = ''; trackById = {}; rows = []; items = []; selected = null;
+  D.tracks = BASE.tracks.concat(USER.tracks);
+  D.events = BASE.events.concat(USER.events.map(function(e){ return Object.assign({}, e); })); // copies: build() adds DOM refs that must never reach storage
   D.tracks.forEach(function(t){
     trackById[t.id] = t;
     var evs = D.events.filter(function(e){ return e.track === t.id; });
@@ -364,9 +455,10 @@ var TIMELINE = {
     });
     row.pts.sort(function(p, q){ return p.at - q.at; });
   });
-
-  function measureAll(){ items.forEach(function(e){ if(e.at != null) e._w = 12 + 8 + textW(e.title); }); }
   measureAll();
+  }
+  function measureAll(){ items.forEach(function(e){ if(e.at != null) e._w = 12 + 8 + textW(e.title); }); }
+  build();
 
   // ---------- render ----------
   function X(y){ return (y - view.a) / (view.b - view.a) * W; }
@@ -615,9 +707,11 @@ var TIMELINE = {
     $('eras').appendChild(b);
   });
   $('eras').firstChild.classList.add('on');
+  function trackChips(){
+  $('tracks').innerHTML = '';
   D.tracks.forEach(function(t){
     var b = document.createElement('button');
-    b.type = 'button'; b.className = 'pk-chip zh'; b.textContent = t.name; b.setAttribute('aria-pressed', 'true');
+    b.type = 'button'; b.className = 'pk-chip zh'; b.textContent = t.name; b.setAttribute('aria-pressed', hidden[t.id] ? 'false' : 'true');
     b.addEventListener('click', function(){
       hidden[t.id] = !hidden[t.id];
       b.setAttribute('aria-pressed', hidden[t.id] ? 'false' : 'true');
@@ -627,9 +721,128 @@ var TIMELINE = {
     });
     $('tracks').appendChild(b);
   });
+  }
+  trackChips();
+
+  // ---------- my events ----------
+  var fm = { title: $('f-title'), track: $('f-track'), newt: $('f-newtrack'), kind: $('f-kind'), e1: $('f-era1'), y1: $('f-y1'),
+    e2: $('f-era2'), y2: $('f-y2'), now: $('f-now'), note: $('f-note'), approx: $('f-approx'), key: $('f-key'), keybox: $('f-keybox'), keylab: $('f-keylab'), btn: document.querySelector('.addbtn'), msg: $('f-msg'), span: $('f-span'), newbox: $('f-newbox') };
+  var PALETTE = ['#f08a7a', '#7ab8f0', '#c79af0', '#f0d85c', '#7fd6c2'];
+  function yearVal(era, input){ var n = parseInt(input.value, 10); return n >= 1 ? (era === 'bc' ? -n : n) : null; }
+  function syncForm(){
+    fm.newbox.hidden = fm.track.value !== '__new';
+    fm.span.hidden = fm.kind.value !== 'span';
+    fm.y2.disabled = fm.now.checked;
+  }
+  function fillTracks(){
+    var cur = fm.track.value, ok = false;
+    fm.track.innerHTML = '';
+    D.tracks.forEach(function(t){
+      var o = document.createElement('option'); o.value = t.id; o.textContent = t.name; fm.track.appendChild(o);
+      if(t.id === cur) ok = true;
+    });
+    var o = document.createElement('option'); o.value = '__new'; o.textContent = '＋ 新建一条轨道'; fm.track.appendChild(o);
+    fm.track.value = ok ? cur : (USER.tracks.length ? USER.tracks[0].id : '__new');
+    syncForm();
+  }
+  function renderMine(){
+    var box = $('mine'), list = $('mine-list');
+    box.hidden = !USER.events.length;
+    list.innerHTML = USER.events.map(function(e){
+      return '<li><button type="button" class="mine-go" data-uid="' + e.uid + '">' + esc(e.title) + '<em>' + esc(when(e).replace(/公元/g, '')) + '</em></button>' +
+        '<button type="button" class="mine-del" data-uid="' + e.uid + '" aria-label="删除 ' + esc(e.title) + '">删除</button></li>';
+    }).join('');
+    $('f-store').hidden = storeOk;
+  }
+  function afterChange(){
+    build(); trackChips(); fillTracks(); renderMine(); render();
+  }
+  function syncKeyUi(){
+    fm.keybox.hidden = !cloud;
+    fm.keylab.textContent = claimed ? '口令（添加或删除时需要）' : '设一个口令（第一次使用，以后每次都要用它，请记住）';
+    $('mine-note').textContent = cloud ? '这些内容存在网站上，所有人都能看到，只有知道口令的人能添加和删除。' : '这些内容只存在这台设备的浏览器里，换设备或清除浏览器数据后不会保留。';
+  }
+  // returns '' on success, otherwise a message for the user
+  function persist(){
+    if(!cloud) return Promise.resolve(save() ? '' : '这个浏览器不让保存，刷新页面后会消失。');
+    var key = fm.key.value;
+    if(key.length < 6) return Promise.resolve('请先填口令，至少 6 位。');
+    return fetch(API, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-poketto-key': key }, body: JSON.stringify(USER) })
+      .then(function(r){
+        if(r.ok){ claimed = true; try { localStorage.setItem(KEYSTORE, key); } catch(_){} syncKeyUi(); return ''; }
+        return r.status === 401 ? '口令不对。' : '没有保存成功，请稍后再试。';
+      }, function(){ return '连不上网站，没有保存。'; });
+  }
+  ['f-track', 'f-kind', 'f-now'].forEach(function(id){ $(id).addEventListener('change', syncForm); });
+  $('addf').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var title = fm.title.value.trim(), span = fm.kind.value === 'span', bad = null, b = null;
+    var a = yearVal(fm.e1.value, fm.y1);
+    if(!title) bad = '请先写一个名字。';
+    if(!bad && a == null) bad = '请填写年份，从 1 开始的数字。';
+    if(!bad && (a < R0 || a > NOW)) bad = '年份要在公元前' + (-R0) + '年到公元' + NOW + '年之间。';
+    if(!bad && span && !fm.now.checked){
+      b = yearVal(fm.e2.value, fm.y2);
+      if(b == null) bad = '请填写结束年份，或者勾选“至今”。';
+      else if(b < a) bad = '结束年份不能早于开始年份。';
+      else if(b > NOW) bad = '结束年份不能晚于' + NOW + '年。';
+    }
+    if(!bad && fm.track.value === '__new' && !fm.newt.value.trim()) bad = '请给新轨道起个名字。';
+    if(bad){ fm.msg.textContent = bad; return; }
+    var prev = JSON.stringify(USER), tid = fm.track.value;
+    if(tid === '__new'){
+      tid = 'u' + Date.now().toString(36);
+      USER.tracks.push({ id: tid, name: fm.newt.value.trim(), en: '', color: PALETTE[USER.tracks.length % PALETTE.length] });
+    }
+    var e = { uid: 'e' + Date.now().toString(36), mine: true, track: tid, title: title, note: fm.note.value.trim(), approx: fm.approx.checked };
+    if(span){ e.from = a; e.to = fm.now.checked ? null : b; } else e.at = a;
+    USER.events.push(e);
+    fm.btn.disabled = true; fm.msg.textContent = '保存中…';
+    persist().then(function(err){
+      fm.btn.disabled = false;
+      if(err && cloud){ USER = JSON.parse(prev); fm.msg.textContent = err; return; }
+      afterChange();
+      fm.title.value = ''; fm.note.value = ''; fm.y1.value = ''; fm.y2.value = ''; fm.approx.checked = false;
+      fm.msg.textContent = err || (cloud ? '已添加并保存到网站。' : '已添加，下面能找到它，点“删除”可以去掉。');
+      var ne = items.filter(function(o){ return o.uid === e.uid; })[0];
+      if(!ne) return;
+      select(ne, false);
+      var s = startOf(ne), en = endOf(ne), pad = Math.max(30, (en - s) * .3);
+      goTo(s - pad, en + pad);
+    });
+  });
+  $('mine-list').addEventListener('click', function(ev){
+    var del = ev.target.closest('.mine-del'), go = ev.target.closest('.mine-go');
+    if(go){
+      var e = items.filter(function(o){ return o.uid === go.getAttribute('data-uid'); })[0];
+      if(e){ select(e, false); var s = startOf(e), en = endOf(e), pad = Math.max(30, (en - s) * .3); goTo(s - pad, en + pad); }
+      return;
+    }
+    if(!del) return;
+    var uid = del.getAttribute('data-uid'), prev = JSON.stringify(USER);
+    USER.events = USER.events.filter(function(o){ return o.uid !== uid; });
+    USER.tracks = USER.tracks.filter(function(t){ return USER.events.some(function(o){ return o.track === t.id; }); });
+    persist().then(function(err){
+      if(err && cloud){ USER = JSON.parse(prev); fm.msg.textContent = err; return; }
+      afterChange(); intro();
+      fm.msg.textContent = err || '已删除。';
+    });
+  });
+  fillTracks(); renderMine();
 
   intro();
   draw();
+  try { var k = localStorage.getItem(KEYSTORE); if(k) fm.key.value = k; } catch(_){}
+  if(/^https?:$/.test(location.protocol)){
+    fetch(API, { cache: 'no-store' }).then(function(r){
+      if(!r.ok || (r.headers.get('content-type') || '').indexOf('json') < 0) throw 0;
+      return r.json();
+    }).then(function(j){
+      if(!j || typeof j.data !== 'object') throw 0;
+      cloud = true; claimed = !!j.claimed; USER = clean(j.data);
+      syncKeyUi(); afterChange();
+    }).catch(function(){});
+  }
   if(window.ResizeObserver) new ResizeObserver(render).observe(tl); else window.addEventListener('resize', render);
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ measureAll(); render(); });
 })();
