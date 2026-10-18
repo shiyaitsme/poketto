@@ -26,14 +26,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ---------- paper (layers are inserted by poketto.js) ---------- */
+/* ---------- paper (layers are inserted by poketto.js); fixed to the screen so the sheet stays put while content scrolls ---------- */
 body::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 50;
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='t' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.045 .05' numOctaves='5' seed='4' result='n'/><feDiffuseLighting in='n' lighting-color='%23ffffff' surfaceScale='2.4'><feDistantLight azimuth='235' elevation='58'/></feDiffuseLighting></filter><rect width='100%' height='100%' filter='url(%23t)'/></svg>");
   background-size: 600px 600px; mix-blend-mode: multiply; opacity: .85;
 }
 .pk-fibres {
-  position: absolute; inset: 0; pointer-events: none; z-index: 49; mix-blend-mode: multiply; opacity: .55;
+  position: fixed; inset: 0; pointer-events: none; z-index: 49; mix-blend-mode: multiply; opacity: .55;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='f' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.9 .06' numOctaves='2' seed='9'/><feColorMatrix values='0 0 0 0 .36  0 0 0 0 .34  0 0 0 0 .28  0 0 0 -1.9 1.05'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>"),
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='g' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' seed='2'/><feColorMatrix values='0 0 0 0 .2  0 0 0 0 .2  0 0 0 0 .18  0 0 0 .7 -.12'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
   background-size: 400px 400px, 300px 300px;
@@ -45,7 +45,7 @@ body::after {
     radial-gradient(30% 6% at 70% 42%, rgba(120,118,105,.10), transparent 70%),
     radial-gradient(50% 7% at 40% 96%, rgba(120,118,105,.14), transparent 70%);
 }
-.pk-vig { position: absolute; inset: 0; pointer-events: none; z-index: 48; background: radial-gradient(130% 100% at 50% 40%, transparent 60%, rgba(70,66,52,.14) 100%); }
+.pk-vig { position: fixed; inset: 0; pointer-events: none; z-index: 48; background: radial-gradient(130% 100% at 50% 40%, transparent 60%, rgba(70,66,52,.14) 100%); }
 #pk-brush { position: absolute; left: 0; top: 0; width: 100%; pointer-events: none; z-index: 1; filter: url(#pk-rough); opacity: .95; mix-blend-mode: multiply; }
 .pk-rail { position: absolute; top: 0; bottom: 0; width: 12px; z-index: 3; pointer-events: none; }
 .pk-rail.l { left: max(2px, env(safe-area-inset-left, 0px)); }
