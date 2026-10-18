@@ -314,7 +314,6 @@ var TIMELINE = {
         <input id="f-y2" type="number" inputmode="numeric" min="1" max="3500" placeholder="如 2005" aria-label="结束年份"></div>
         <label class="pk-check"><input id="f-now" type="checkbox">一直到今天</label></div>
       <label class="fld wide"><span>说明（可以不写）</span><textarea id="f-note" rows="2" maxlength="300" placeholder="点开这一条时会显示"></textarea></label>
-      <label class="fld wide" id="f-keybox" hidden><span id="f-keylab">口令</span><input id="f-key" type="password" autocomplete="off" maxlength="100" placeholder="至少 6 位"></label>
       <div class="wide ctrl between">
         <label class="pk-check"><input id="f-approx" type="checkbox">年份不确定（会用虚线标出）</label>
         <button class="addbtn" type="submit">添加到时间线</button>
@@ -333,9 +332,7 @@ var TIMELINE = {
     <div class="pk-h2"><small>About the dates</small>关于年代</div>
     <p class="pk-note">虚线框、虚线圆点的条目年代<b>不确定</b>，说明里会写“约”。夏、商、西周初年采用“夏商周断代工程”2000年的年表，至今仍有争议；更早的年代来自考古测年，只是大致范围。</p>
     <p class="pk-note">没有“公元0年”：公元前1年的下一年就是公元1年。这条时间线是按数字画的，所以公元前后交界处会差一年，放大到最细也看不出来。</p>
-    <div class="pk-h2"><small>Who can edit</small>谁能添加</div>
-    <p class="pk-note">添加和删除要输入口令。第一次添加时填的口令就是以后的口令，请记住它。已添加的内容所有人都能看到。</p>
-  </section>
+    </section>
 
   <footer class="pk-foot">
     <a class="pk-back pk-label" href="../index.html">
@@ -359,7 +356,7 @@ var TIMELINE = {
   var NOW = new Date().getFullYear();
   var R0 = D.range[0], R1 = Math.max(D.range[1], NOW + 4);
   var MIN_SPAN = 12;
-  var API = '/api/timeline', KEYSTORE = 'poketto-timeline-key', cloud = false, claimed = false;
+  var API = '/api/timeline', cloud = false;
   function safeId(s){ return String(s == null ? '' : s).replace(/[^a-z0-9]/gi, '').slice(0, 24); }
   function yr(n){ return typeof n === 'number' && isFinite(n) && n !== 0 ? Math.round(n) : null; }
   // data from storage or the server is never trusted: keep only well-formed fields
@@ -726,7 +723,7 @@ var TIMELINE = {
 
   // ---------- my events ----------
   var fm = { title: $('f-title'), track: $('f-track'), newt: $('f-newtrack'), kind: $('f-kind'), e1: $('f-era1'), y1: $('f-y1'),
-    e2: $('f-era2'), y2: $('f-y2'), now: $('f-now'), note: $('f-note'), approx: $('f-approx'), key: $('f-key'), keybox: $('f-keybox'), keylab: $('f-keylab'), btn: document.querySelector('.addbtn'), msg: $('f-msg'), span: $('f-span'), newbox: $('f-newbox') };
+    e2: $('f-era2'), y2: $('f-y2'), now: $('f-now'), note: $('f-note'), approx: $('f-approx'), btn: document.querySelector('.addbtn'), msg: $('f-msg'), span: $('f-span'), newbox: $('f-newbox') };
   var PALETTE = ['#f08a7a', '#7ab8f0', '#c79af0', '#f0d85c', '#7fd6c2'];
   function yearVal(era, input){ var n = parseInt(input.value, 10); return n >= 1 ? (era === 'bc' ? -n : n) : null; }
   function syncForm(){
@@ -758,20 +755,13 @@ var TIMELINE = {
     build(); trackChips(); fillTracks(); renderMine(); render();
   }
   function syncKeyUi(){
-    fm.keybox.hidden = !cloud;
-    fm.keylab.textContent = claimed ? '口令（添加或删除时需要）' : '设一个口令（第一次使用，以后每次都要用它，请记住）';
-    $('mine-note').textContent = cloud ? '这些内容存在网站上，所有人都能看到，只有知道口令的人能添加和删除。' : '这些内容只存在这台设备的浏览器里，换设备或清除浏览器数据后不会保留。';
+    $('mine-note').textContent = cloud ? '这些内容存在网站上，换设备也在。' : '这些内容只存在这台设备的浏览器里，换设备或清除浏览器数据后不会保留。';
   }
   // returns '' on success, otherwise a message for the user
   function persist(){
     if(!cloud) return Promise.resolve(save() ? '' : '这个浏览器不让保存，刷新页面后会消失。');
-    var key = fm.key.value;
-    if(key.length < 6) return Promise.resolve('请先填口令，至少 6 位。');
-    return fetch(API, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-poketto-key': key }, body: JSON.stringify(USER) })
-      .then(function(r){
-        if(r.ok){ claimed = true; try { localStorage.setItem(KEYSTORE, key); } catch(_){} syncKeyUi(); return ''; }
-        return r.status === 401 ? '口令不对。' : '没有保存成功，请稍后再试。';
-      }, function(){ return '连不上网站，没有保存。'; });
+    return fetch(API, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(USER) })
+      .then(function(r){ return r.ok ? '' : '没有保存成功，请稍后再试。'; }, function(){ return '连不上网站，没有保存。'; });
   }
   ['f-track', 'f-kind', 'f-now'].forEach(function(id){ $(id).addEventListener('change', syncForm); });
   $('addf').addEventListener('submit', function(ev){
@@ -832,14 +822,13 @@ var TIMELINE = {
 
   intro();
   draw();
-  try { var k = localStorage.getItem(KEYSTORE); if(k) fm.key.value = k; } catch(_){}
   if(/^https?:$/.test(location.protocol)){
     fetch(API, { cache: 'no-store' }).then(function(r){
       if(!r.ok || (r.headers.get('content-type') || '').indexOf('json') < 0) throw 0;
       return r.json();
     }).then(function(j){
       if(!j || typeof j.data !== 'object') throw 0;
-      cloud = true; claimed = !!j.claimed; USER = clean(j.data);
+      cloud = true; USER = clean(j.data);
       syncKeyUi(); afterChange();
     }).catch(function(){});
   }
