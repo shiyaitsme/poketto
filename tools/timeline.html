@@ -425,7 +425,7 @@ var TIMELINE = {
     });
     var row = { t: t, el: document.createElement('div'), spanLanes: ends.length, pts: [], lanes: t.lanes || POINT_LANES };
     row.el.className = 'tl-row';
-    row.el.innerHTML = '<div class="tl-name pk-label"><span class="zh">' + t.name + '</span>' + (t.en || '') + '</div>';
+    row.el.innerHTML = '<div class="tl-name pk-label"><span class="zh">' + esc(t.name) + '</span>' + esc(t.en || '') + '</div>';
     row.ptTop = NAME_H + row.spanLanes * SPAN_H;
     row.el.style.height = (row.ptTop + (evs.length > spans.length ? row.lanes * PT_H + MINI_H : 0) + 4) + 'px';
     rowsEl.appendChild(row.el);
