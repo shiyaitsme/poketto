@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Poketto · 口袋工具箱</title>
+  <style>
+    :root {
+      --bg: #faf8f4; --card: #ffffff; --text: #22201c; --muted: #6b665d;
+      --accent: #d9622b; --border: #e7e2d8;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1916; --card: #24221e; --text: #ece8e0; --muted: #a39d92;
+        --accent: #f08a50; --border: #37342e;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.6;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 48px 16px; }
+    h1 { font-size: 2.4rem; margin: 0; }
+    h1 span { color: var(--accent); }
+    .tagline { color: var(--muted); margin: 8px 0 32px; }
+    #filter {
+      width: 100%; padding: 10px 14px; font-size: 1rem; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--card); color: var(--text);
+      margin-bottom: 24px;
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+    a.card {
+      display: block; padding: 18px; border-radius: 14px; text-decoration: none; color: inherit;
+      background: var(--card); border: 1px solid var(--border); transition: transform .15s, border-color .15s;
+    }
+    a.card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .subject { font-size: .8rem; color: var(--accent); font-weight: 600; }
+    .title { font-size: 1.1rem; font-weight: 600; margin: 4px 0; }
+    .desc { color: var(--muted); font-size: .92rem; margin: 0; }
+    footer { color: var(--muted); font-size: .85rem; margin-top: 48px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Poketto <span>·</span> 口袋工具箱</h1>
+    <p class="tagline">收藏各学科的小型交互式可视化工具，让知识看得见、摸得着。</p>
+    <input id="filter" type="search" placeholder="搜索工具或学科…">
+    <div class="grid" id="grid"></div>
+    <footer>想加新工具？在 <code>tools.json</code> 里添一条记录就好。</footer>
+  </main>
+  <script>
+    const grid = document.getElementById('grid');
+    const filter = document.getElementById('filter');
+    let tools = [];
+
+    function render() {
+      const q = filter.value.trim().toLowerCase();
+      grid.innerHTML = '';
+      tools
+        .filter(t => !q || [t.title, t.subject, t.description].join(' ').toLowerCase().includes(q))
+        .forEach(t => {
+          const a = document.createElement('a');
+          a.className = 'card';
+          a.href = t.url;
+          a.innerHTML = '<div class="subject"></div><div class="title"></div><p class="desc"></p>';
+          a.querySelector('.subject').textContent = t.subject;
+          a.querySelector('.title').textContent = t.title;
+          a.querySelector('.desc').textContent = t.description;
+          grid.appendChild(a);
+        });
+    }
+
+    fetch('tools.json')
+      .then(r => r.json())
+      .then(data => { tools = data; render(); })
+      .catch(() => { grid.textContent = '工具清单加载失败。'; });
+    filter.addEventListener('input', render);
+  </script>
+</body>
+</html>
