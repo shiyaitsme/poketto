@@ -128,7 +128,6 @@
           <button class="pk-chip zh" id="zInner">只看内行星</button>
           <label class="pk-check"><input type="checkbox" id="axisOn" checked>画出地轴</label>
           <label class="pk-check"><input type="checkbox" id="namesOn" checked>行星名字</label>
-          <label class="pk-check"><input type="checkbox" id="teachOn" checked>教学地球（一半红一半蓝）</label>
         </div>
         <p class="lab" id="scaleNote"></p>
       </section>
@@ -153,7 +152,7 @@
     <div class="pk-h2"><small>How to read</small>怎么读这张图</div>
     <p class="pk-note"><b>轨道是椭圆，不是正圆。</b>每颗行星离太阳有近有远，越近走得越快（开普勒第二定律）。地球一月初最近，七月初最远，但相差只有 3%，所以冷热主要不是由远近决定。</p>
     <p class="pk-note"><b>压缩比例看得清，真实比例看得真。</b>真实比例下，水星到火星挤在中心一小团里，海王星在边缘。拖动放大条，或点“只看内行星”，能靠近看里面。</p>
-    <p class="pk-note"><b>季节来自倾斜，不来自远近。</b>图上黑色短棍是地轴，红圈是赤道；教学地球一半红、一半蓝，而且不自转：每个位置的红面都朝着同一个方向，换的只是太阳和你看它的角度。四个节气处的小地球，地轴互相平行，说明地轴指向不变。夏至时北极一侧朝向太阳，阳光更直，白天更长；冬至时相反。春分、秋分太阳正对赤道，昼夜几乎等长。</p>
+    <p class="pk-note"><b>季节来自倾斜，不来自远近。</b>图上黑色短棍是地轴，红圈是赤道。四个节气处的小地球，地轴互相平行，说明地轴指向不变。夏至时北极一侧朝向太阳，阳光更直，白天更长；冬至时相反。春分、秋分太阳正对赤道，昼夜几乎等长。</p>
     <p class="pk-note" style="font-size:12px">行星和太阳的表面贴图来自 Planet Pixel Emporium（James Hastings-Trew），仅作非商业展示。</p>
   </section>
 
@@ -259,7 +258,7 @@
     var opt = texName ? { map: tex(texName), color: 0xffffff } : { color: col };
     var m = new THREE.Mesh(SPH, lit ? new THREE.MeshLambertMaterial(opt) : new THREE.MeshBasicMaterial(opt));
     m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pole || new THREE.Vector3(0, 0, 1)); // sphere poles point along y; our up is z
-    g.userData.mesh = m; g.add(o); g.add(m); return g;
+    g.add(o); g.add(m); return g;
   }
   function earthLike(col, texName) { // lit Earth with tilted axis and equator ring; the day side always faces the sun
     var g = ball(col, true, texName, AXIS), axisGroup = new THREE.Group();
@@ -292,19 +291,6 @@
     scene.add(g); objs[p.id] = g;
   });
   var markers = SEASONS.map(function (s) { var g = earthLike(new THREE.Color(0x7fb06a), EARTH.tex); scene.add(g); return g; });
-
-  // teaching globe: one half red, the other half blue, split along a line through both poles.
-  // It does not spin, so the same colour always faces the same direction in space: only the viewpoint changes.
-  function teachTexture() {
-    var c = document.createElement('canvas'); c.width = 1024; c.height = 512; var x = c.getContext('2d');
-    x.fillStyle = '#d4402a'; x.fillRect(0, 0, 512, 512);
-    x.fillStyle = '#3f7fd0'; x.fillRect(512, 0, 512, 512);
-    x.fillStyle = '#1d1e1b'; x.fillRect(0, 0, 6, 512); x.fillRect(509, 0, 6, 512); x.fillRect(1018, 0, 6, 512);
-    var t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
-  }
-  var TEACH = teachTexture(), earthBodies = [objs.earth].concat(markers);
-  earthBodies.forEach(function (g) { g.userData.real = g.userData.mesh.material.map; });
-  function setTeach(on) { earthBodies.forEach(function (g) { g.userData.mesh.material.map = on ? TEACH : g.userData.real; g.userData.mesh.material.needsUpdate = true; }); }
 
   var orbitLines = [];
   function buildOrbits() {
@@ -363,8 +349,8 @@
     }
     for (i = 0; i < 4; i++) {
       var q = kepler(EARTH, dayOf(SEASONS[i].date)), mv = worldPos(q.r, q.lam);
-      markers[i].position.copy(mv); markers[i].scale.setScalar(8 * k); markers[i].userData.axisGroup.visible = S.axis;
-      place('s' + i, mv.clone().add(new THREE.Vector3(0, 0, 8 * k * 2.4)), -2, true);
+      markers[i].position.copy(mv); markers[i].scale.setScalar(6 * k); markers[i].userData.axisGroup.visible = S.axis;
+      place('s' + i, mv.clone().add(new THREE.Vector3(0, 0, 6 * k * 2.5)), -2, true);
     }
     renderer.render(scene, camera);
   }
@@ -479,8 +465,6 @@
   });
   $('axisOn').addEventListener('change', function () { S.axis = this.checked; });
   $('namesOn').addEventListener('change', function () { S.names = this.checked; });
-  $('teachOn').addEventListener('change', function () { setTeach(this.checked); });
-  setTeach($('teachOn').checked);
   document.querySelector('[data-scale="sqrt"]').click();
   zoomLab();
 
