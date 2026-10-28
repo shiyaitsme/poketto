@@ -11,9 +11,15 @@
 <style>
   /* tool-specific layout; look comes from poketto.css */
   .stage { position: relative; padding: 0; overflow: hidden; --l: 18px; height: clamp(300px, 46vh, 460px); }
-  .stage canvas { position: relative; z-index: 1; display: block; width: 100%; height: 100%; touch-action: manipulation; cursor: pointer; }
+  .stage canvas { position: relative; z-index: 1; display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   .badge { position: absolute; z-index: 2; top: 16px; left: 22px; pointer-events: none; }
   .badge small { margin-left: 8px; font-family: var(--body); font-weight: 500; letter-spacing: .06em; color: var(--ink-2); text-transform: none; }
+  .lbls { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+  .lbl { position: absolute; left: 0; top: 0; font-weight: 700; font-size: 12px; line-height: 1.2; white-space: nowrap; color: var(--ink); text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper), 0 0 6px var(--paper); }
+  .lbl.sel { font-weight: 900; font-size: 13px; }
+  .lbl.season { font-size: 12.5px; padding: 0 5px; background: rgba(185,224,76,.75); }
+  .nogl[hidden] { display: none; }
+  .nogl { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--ink-2); }
   .hint { position: absolute; z-index: 2; bottom: 14px; right: 22px; pointer-events: none; color: var(--ink-2); }
   .panel { display: flex; flex-direction: column; gap: 14px; padding: 18px 24px; }
   .row { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
@@ -67,16 +73,18 @@
     <h1 class="pk-title">太阳系的<br>公转</h1>
     <svg class="pk-star" viewBox="0 0 40 80" aria-hidden="true"><path d="M20 0 C21.2 26 22.5 33 40 38 C22.5 43 21.2 52 20 80 C18.8 52 17.5 43 0 38 C17.5 33 18.8 26 20 0Z"/></svg>
     <div class="pk-br pk-lead">
-      <p class="pk-verse">八颗行星各走各的轨道，快慢差得很远。<br>点一颗行星看它的数据，<br>再看地球：地轴指向始终没变，季节却换了四次。</p>
+      <p class="pk-verse">八颗行星各走各的轨道，快慢差得很远。<br>拖动画面转着看，点一颗行星看数据，<br>再看地球：地轴指向始终没变，季节却换了四次。</p>
     </div>
   </header>
 
   <div class="bench">
     <div class="bench-view">
       <section class="stage pk-br pk-veil" aria-label="太阳系轨道图">
-        <canvas id="cv" aria-label="太阳系轨道图，点击行星查看信息"></canvas>
+        <canvas id="cv" aria-label="可拖动旋转的太阳系 3D 轨道图，点击行星查看信息"></canvas>
+        <div class="lbls" id="lbls" aria-hidden="true"></div>
+        <div class="nogl" id="nogl" hidden>这个环境打不开 3D 画面，下面的数据和示意图仍然可用。</div>
         <div class="badge pk-label" id="badge">Solar System<small id="badge2"></small></div>
-        <div class="hint pk-label">点行星 / Tap a planet</div>
+        <div class="hint pk-label">拖动旋转 · 滚轮缩放 / Drag</div>
       </section>
     </div>
 
@@ -111,7 +119,7 @@
           <button class="pk-chip zh" data-scale="sqrt" aria-pressed="true">压缩比例</button>
           <button class="pk-chip zh" data-scale="linear" aria-pressed="false">真实比例</button>
           <span class="lab">|</span>
-          <button class="pk-chip zh" data-view="tilt" aria-pressed="true">斜着看</button>
+          <button class="pk-chip zh" data-view="free" aria-pressed="true">自由旋转</button>
           <button class="pk-chip zh" data-view="top" aria-pressed="false">从上往下看</button>
         </div>
         <input class="pk-range" type="range" id="zoom" min="0" max="100" step="1" value="0" aria-label="放大">
@@ -144,7 +152,7 @@
     <div class="pk-h2"><small>How to read</small>怎么读这张图</div>
     <p class="pk-note"><b>轨道是椭圆，不是正圆。</b>每颗行星离太阳有近有远，越近走得越快（开普勒第二定律）。地球一月初最近，七月初最远，但相差只有 3%，所以冷热主要不是由远近决定。</p>
     <p class="pk-note"><b>压缩比例看得清，真实比例看得真。</b>真实比例下，水星到火星挤在中心一小团里，海王星在边缘。拖动放大条，或点“只看内行星”，能靠近看里面。</p>
-    <p class="pk-note"><b>季节来自倾斜，不来自远近。</b>图上黑色短线是地轴。四个节气处的短线互相平行，说明地轴指向不变。夏至时北极一侧朝向太阳，阳光更直，白天更长；冬至时相反。春分、秋分太阳正对赤道，昼夜几乎等长。</p>
+    <p class="pk-note"><b>季节来自倾斜，不来自远近。</b>图上黑色短棍是地轴，红圈是赤道。四个节气处的小地球，地轴互相平行，说明地轴指向不变。夏至时北极一侧朝向太阳，阳光更直，白天更长；冬至时相反。春分、秋分太阳正对赤道，昼夜几乎等长。</p>
   </section>
 
   <footer class="pk-foot">
@@ -155,6 +163,7 @@
     <span class="pk-label">Poketto &middot; Made with curiosity</span>
   </footer>
 </main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (function () {
   var DEG = Math.PI / 180, TILT = 23.4 * DEG, J2000 = Date.UTC(2000, 0, 1, 12), DAY = 86400000;
@@ -216,120 +225,151 @@
   }
 
   var SPEEDS = [1, 5, 15, 30, 90, 365, 1500, 5000]; // days per second
-  var S = { t: Date.now(), playing: true, speed: 3, scale: 'sqrt', view: 'tilt', zoom: 1, sel: 'earth', axis: true, names: true };
+  var S = { t: Date.now(), playing: true, speed: 3, scale: 'sqrt', view: 'free', zoom: 1, sel: 'earth', axis: true, names: true };
   if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) S.playing = false;
-
-  var cv = $('cv'), ctx = cv.getContext('2d'), W = 0, H = 0, dpr = 1, hits = [];
-  function resize() {
-    var r = cv.getBoundingClientRect();
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = r.width; H = r.height;
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-  }
-
-  var AZ = -40 * DEG, ELEV = 58 * DEG;
-  function viewParams() { return S.view === 'top' ? { az: 0, el: 90 * DEG } : { az: AZ, el: ELEV }; }
-  var MAXA = 30.5;
-  function baseR() { return Math.min(W, H) / 2 - 26; }
-  function radial(r) { // AU -> pixels, before view foreshortening
-    var k = baseR() * S.zoom;
-    return S.scale === 'sqrt' ? k * Math.sqrt(r / MAXA) : k * (r / MAXA);
-  }
-  function project(x, y, z) { // world (x,y in orbit plane, z up) -> screen offset from sun
-    var v = viewParams(), c = Math.cos(v.az), s = Math.sin(v.az);
-    var xr = x * c - y * s, yr = x * s + y * c;
-    return [xr, -(yr * Math.sin(v.el) + z * Math.cos(v.el))];
-  }
-  function toScreen(r, lam) {
-    var R = radial(r), p = project(R * Math.cos(lam), R * Math.sin(lam), 0);
-    return [W / 2 + p[0], H / 2 + p[1] * (S.view === 'top' ? 1 : 1)];
-  }
-  // axis end points (screen vectors) for a given pixel length
-  function axisVec(len) {
-    var p = project(0, Math.sin(TILT) * len, Math.cos(TILT) * len);
-    return p;
-  }
 
   var css = getComputedStyle(document.documentElement);
   function cssv(n, d) { return (css.getPropertyValue(n) || d).trim() || d; }
-  var INK = cssv('--ink', '#1d1e1b'), INK2 = cssv('--ink-2', '#4a4c45'), SUN = cssv('--sun', '#e58a1f'), LIME = cssv('--lime', '#b9e04c');
+  var INK = cssv('--ink', '#1d1e1b'), INK2 = cssv('--ink-2', '#4a4c45'), SUN = cssv('--sun', '#e58a1f');
 
+  // ---------- 3D scene (three.js): orbit plane is x/y, z points up, north ecliptic pole ----------
+  var cv = $('cv'), lblBox = $('lbls'), W = 0, H = 0, hits = [], renderer = null;
+  try { renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); } catch (e) { renderer = null; }
+  if (!renderer) $('nogl').hidden = false;
+  var scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(40, 1, 0.05, 4000);
+  camera.up.set(0, 0, 1);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  scene.add(new THREE.PointLight(0xffffff, 1.2, 0, 0));
+
+  var MAXA = 30.5, WORLD = 100, EL_FREE = 52 * DEG, EL_TOP = 89.4 * DEG;
+  var cam = { az: -105 * DEG, el: EL_FREE, targetEl: EL_FREE };
+  var AXIS = new THREE.Vector3(0, Math.sin(TILT), Math.cos(TILT)); // Earth's axis: one fixed direction for the whole year
+  function radial(r) { return WORLD * (S.scale === 'sqrt' ? Math.sqrt(r / MAXA) : r / MAXA); }
+  function worldPos(r, lam) { var R = radial(r); return new THREE.Vector3(R * Math.cos(lam), R * Math.sin(lam), 0); }
+
+  var SPH = new THREE.SphereGeometry(1, 28, 18);
+  var INKC = 0x1d1e1b;
+  function ball(col, lit) { // sphere with an ink outline (back-face shell) to match the paper-poster look
+    var g = new THREE.Group();
+    var o = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({ color: INKC, side: THREE.BackSide })); o.scale.setScalar(1.13);
+    var m = new THREE.Mesh(SPH, lit ? new THREE.MeshLambertMaterial({ color: col }) : new THREE.MeshBasicMaterial({ color: col }));
+    g.add(o); g.add(m); return g;
+  }
+  function earthLike(col) { // lit Earth with tilted axis and equator ring; the day side always faces the sun
+    var g = ball(col, true), axisGroup = new THREE.Group();
+    var L = 1.9, a = AXIS.clone();
+    var line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a.clone().multiplyScalar(-L), a.clone().multiplyScalar(L)]), new THREE.LineBasicMaterial({ color: INKC }));
+    var tip = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({ color: INKC })); tip.scale.setScalar(.14); tip.position.copy(a).multiplyScalar(L);
+    var u = new THREE.Vector3(1, 0, 0), v = new THREE.Vector3().crossVectors(a, u), pts = [];
+    for (var i = 0; i <= 64; i++) { var t = i / 64 * Math.PI * 2; pts.push(u.clone().multiplyScalar(Math.cos(t) * 1.04).add(v.clone().multiplyScalar(Math.sin(t) * 1.04))); }
+    var eq = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xd4402a }));
+    axisGroup.add(line); axisGroup.add(tip); axisGroup.add(eq); g.add(axisGroup); g.userData.axisGroup = axisGroup;
+    return g;
+  }
+  function glowTex() {
+    var c = document.createElement('canvas'); c.width = c.height = 128; var x = c.getContext('2d');
+    var gr = x.createRadialGradient(64, 64, 6, 64, 64, 64); gr.addColorStop(0, 'rgba(229,138,31,.55)'); gr.addColorStop(1, 'rgba(229,138,31,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c);
+  }
+
+  var sunObj = ball(0xe58a1f, false), glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), depthWrite: false }));
+  scene.add(sunObj); scene.add(glow);
+  var objs = {};
+  PLANETS.forEach(function (p) {
+    var g = p === EARTH ? earthLike(new THREE.Color(p.col)) : ball(new THREE.Color(p.col), true);
+    if (p.ring) {
+      var ring = new THREE.Mesh(new THREE.RingGeometry(1.45, 2.3, 56), new THREE.MeshBasicMaterial({ color: 0xcdb878, side: THREE.DoubleSide, transparent: true, opacity: .85 }));
+      ring.rotation.x = 26.7 * DEG; g.add(ring);
+    }
+    scene.add(g); objs[p.id] = g;
+  });
+  var markers = SEASONS.map(function (s) { var g = earthLike(new THREE.Color(0x7fb06a)); scene.add(g); return g; });
+
+  var orbitLines = [];
+  function buildOrbits() {
+    orbitLines.forEach(function (l) { scene.remove(l); l.geometry.dispose(); l.material.dispose(); });
+    orbitLines = PLANETS.map(function (p) {
+      var pts = [];
+      for (var k = 0; k <= 240; k++) { var nu = k / 240 * Math.PI * 2, r = p.a * (1 - p.e * p.e) / (1 + p.e * Math.cos(nu)); pts.push(worldPos(r, nu + p.w * DEG)); }
+      var l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: INKC, transparent: true, opacity: p === EARTH ? .95 : .4 }));
+      scene.add(l); return l;
+    });
+  }
+
+  // HTML labels projected onto the canvas keep the real text rendering
+  var labels = {};
+  function mkLabel(id, text, cls) { var d = document.createElement('div'); d.className = 'lbl ' + (cls || ''); d.textContent = text; lblBox.appendChild(d); labels[id] = d; return d; }
+  mkLabel('sun', '太阳'); PLANETS.forEach(function (p) { mkLabel(p.id, p.name); }); SEASONS.forEach(function (s, i) { mkLabel('s' + i, s.name, 'season'); });
+  function place(id, v3, dy, show) {
+    var el = labels[id], v = v3.clone().project(camera);
+    if (!show || v.z > 1) { el.style.display = 'none'; return null; }
+    var x = (v.x * .5 + .5) * W, y = (-v.y * .5 + .5) * H;
+    el.style.display = ''; el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + (y + dy).toFixed(1) + 'px) translate(-50%,-100%)';
+    return [x, y];
+  }
+
+  function resize() {
+    var r = cv.getBoundingClientRect(); W = r.width; H = r.height;
+    if (!renderer || !W || !H) return;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setSize(W, H, false);
+    camera.aspect = W / H; camera.updateProjectionMatrix();
+  }
+
+  var lastScale = null;
   function draw() {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, W, H);
+    if (!renderer) return;
+    if (lastScale !== S.scale) { lastScale = S.scale; buildOrbits(); }
     var d = dayOf(S.t), i, p;
+    // camera: orbit around the sun; zoom moves it closer
+    cam.el += (cam.targetEl - cam.el) * .12;
+    var dist = WORLD * 3.3 / S.zoom / Math.min(1, camera.aspect * 1.05);
+    camera.position.set(dist * Math.cos(cam.el) * Math.cos(cam.az), dist * Math.cos(cam.el) * Math.sin(cam.az), dist * Math.sin(cam.el));
+    camera.near = Math.max(.02, dist * .004); camera.updateProjectionMatrix();
+    camera.lookAt(0, 0, 0);
+    var k = dist / 330 * .5; // bodies keep a constant look on screen, not true size
+    sunObj.scale.setScalar(11 * k); glow.scale.setScalar(70 * k);
     hits = [];
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-
-    // orbits
+    var sp = place('sun', new THREE.Vector3(0, 0, 11 * k), -4, S.names);
     for (i = 0; i < PLANETS.length; i++) {
-      p = PLANETS[i];
-      ctx.beginPath();
-      for (var k = 0; k <= 180; k++) {
-        var nu = k / 180 * Math.PI * 2, r = p.a * (1 - p.e * p.e) / (1 + p.e * Math.cos(nu));
-        var q = toScreen(r, nu + p.w * DEG);
-        k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = p === EARTH ? INK : 'rgba(29,30,27,.45)';
-      ctx.lineWidth = p === EARTH ? 1.6 : 1;
-      ctx.stroke();
+      p = PLANETS[i]; var pos = kepler(p, d), v = worldPos(pos.r, pos.lam), o = objs[p.id];
+      o.position.copy(v); o.scale.setScalar(p.r * k * (p === EARTH ? 1 : 1));
+      if (p === EARTH) o.userData.axisGroup.visible = S.axis;
+      var sel = S.sel === p.id;
+      labels[p.id].classList.toggle('sel', sel);
+      var s2 = place(p.id, v.clone().add(new THREE.Vector3(0, 0, p.r * k * 1.6)), -2, S.names || sel);
+      var sc = v.clone().project(camera);
+      if (sc.z < 1) hits.push({ id: p.id, x: (sc.x * .5 + .5) * W, y: (-sc.y * .5 + .5) * H, r: Math.max(p.r * .9 + 10, 16) });
     }
-
-    // Earth's four season markers, each with the same axis direction
-    var ep = kepler(EARTH, d), AXL = 24;
     for (i = 0; i < 4; i++) {
-      var sp = kepler(EARTH, dayOf(SEASONS[i].date)), q2 = toScreen(sp.r, sp.lam);
-      ctx.fillStyle = LIME; ctx.strokeStyle = INK; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.arc(q2[0], q2[1], 4, 0, 7); ctx.fill(); ctx.stroke();
-      if (S.axis) drawAxis(q2[0], q2[1], AXL, true);
-      // name placed away from the sun
-      var dx = q2[0] - W / 2, dy = q2[1] - H / 2, dl = Math.hypot(dx, dy) || 1;
-      ctx.fillStyle = INK; ctx.font = '700 12px "Noto Sans SC", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(SEASONS[i].name, q2[0] + dx / dl * 30, q2[1] + dy / dl * 22 - (S.axis ? 2 : 0));
+      var q = kepler(EARTH, dayOf(SEASONS[i].date)), mv = worldPos(q.r, q.lam);
+      markers[i].position.copy(mv); markers[i].scale.setScalar(6 * k); markers[i].userData.axisGroup.visible = S.axis;
+      place('s' + i, mv.clone().add(new THREE.Vector3(0, 0, 6 * k * 2.5)), -2, true);
     }
+    renderer.render(scene, camera);
+  }
 
-    // sun
-    var sx = W / 2, sy = H / 2;
-    var g = ctx.createRadialGradient(sx, sy, 4, sx, sy, 30);
-    g.addColorStop(0, 'rgba(229,138,31,.5)'); g.addColorStop(1, 'rgba(229,138,31,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, 30, 0, 7); ctx.fill();
-    ctx.fillStyle = SUN; ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.arc(sx, sy, 11, 0, 7); ctx.fill(); ctx.stroke();
-    if (S.names) { ctx.fillStyle = INK; ctx.font = '700 12px "Noto Sans SC", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('太阳', sx, sy + 15); }
-
-    // planets
-    for (i = 0; i < PLANETS.length; i++) {
-      p = PLANETS[i];
-      var pos = kepler(p, d), pt = toScreen(pos.r, pos.lam), sel = S.sel === p.id;
-      if (p.ring) {
-        ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.beginPath();
-        ctx.ellipse(pt[0], pt[1], p.r * 1.9, p.r * .6, -.25, 0, 7); ctx.stroke();
-      }
-      ctx.fillStyle = p.col; ctx.strokeStyle = INK; ctx.lineWidth = sel ? 2.2 : 1.4;
-      ctx.beginPath(); ctx.arc(pt[0], pt[1], p.r, 0, 7); ctx.fill(); ctx.stroke();
-      if (sel) {
-        ctx.setLineDash([3, 3]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(pt[0], pt[1], p.r + 6, 0, 7); ctx.stroke(); ctx.setLineDash([]);
-      }
-      if (p === EARTH && S.axis) drawAxis(pt[0], pt[1], AXL, false);
-      if (S.names || sel) {
-        ctx.fillStyle = INK; ctx.font = (sel ? '900 ' : '700 ') + '12px "Noto Sans SC", sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        ctx.fillText(p.name, pt[0] + p.r + (sel ? 9 : 5), pt[1] - p.r - 2);
-      }
-      hits.push({ id: p.id, x: pt[0], y: pt[1], r: Math.max(p.r + 8, 14) });
+  // drag to rotate, wheel to zoom, tap to pick
+  var drag = null;
+  cv.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
+  cv.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 5) drag.moved = true;
+    if (!drag.moved) return;
+    drag.x = e.clientX; drag.y = e.clientY;
+    cam.az -= dx * .008; cam.el = Math.max(.05, Math.min(EL_TOP, cam.el + dy * .006)); cam.targetEl = cam.el;
+    setView('free', true);
+  });
+  cv.addEventListener('pointerup', function (e) {
+    if (drag && !drag.moved) {
+      var r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, best = null, bd = 1e9;
+      hits.forEach(function (h) { var dd = Math.hypot(h.x - x, h.y - y); if (dd < h.r && dd < bd) { bd = dd; best = h; } });
+      if (best) select(best.id);
     }
-    // sun-earth line
-    var e2 = toScreen(ep.r, ep.lam);
-    ctx.setLineDash([2, 4]); ctx.strokeStyle = INK2; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(e2[0], e2[1]); ctx.stroke(); ctx.setLineDash([]);
-  }
-  function drawAxis(x, y, len, ghost) {
-    var a = axisVec(len);
-    ctx.strokeStyle = INK; ctx.lineWidth = ghost ? 1.4 : 2;
-    ctx.beginPath(); ctx.moveTo(x - a[0], y - a[1]); ctx.lineTo(x + a[0], y + a[1]); ctx.stroke();
-    // north end marker
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(x + a[0], y + a[1], 2.4, 0, 7); ctx.fill();
-  }
+    drag = null;
+  });
+  cv.addEventListener('pointercancel', function () { drag = null; });
+  cv.addEventListener('wheel', function (ev) { ev.preventDefault(); setZoom(S.zoom * Math.exp(-ev.deltaY * .0015)); }, { passive: false });
 
   // ---------- UI ----------
   function dateText(ms) { var dt = new Date(ms); return dt.getFullYear() + '年' + (dt.getMonth() + 1) + '月' + dt.getDate() + '日'; }
@@ -358,7 +398,6 @@
     $('iFact').textContent = p.fact;
     [].forEach.call($('planets').children, function (b) { b.setAttribute('aria-pressed', b.dataset.id === S.sel ? 'true' : 'false'); });
   }
-  var infoTick = 0;
   function select(id) { S.sel = id; fillInfo(); }
 
   PLANETS.forEach(function (p) {
@@ -407,10 +446,14 @@
         : '真实比例：画面距离 ∝ 轨道半径。海王星的轨道半径是地球的 30 倍，所以内行星挤在中心，请用放大或“只看内行星”。行星大小不是真实比例。';
     });
   });
+  function setView(v, fromDrag) {
+    S.view = v;
+    if (!fromDrag) cam.targetEl = v === 'top' ? EL_TOP : EL_FREE;
+    document.querySelectorAll('[data-view]').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.view === v); });
+  }
   document.querySelectorAll('[data-view]').forEach(function (b) {
     b.addEventListener('click', function () {
-      S.view = b.dataset.view;
-      document.querySelectorAll('[data-view]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      setView(b.dataset.view, false);
     });
   });
   $('axisOn').addEventListener('change', function () { S.axis = this.checked; });
