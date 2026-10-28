@@ -277,7 +277,11 @@
     }
     scene.add(g); objs[p.id] = g;
   });
-  var markers = SEASONS.map(function (s) { var g = earthLike(new THREE.Color(0x7fb06a), EARTH.tex); scene.add(g); return g; });
+  function ghostify(g, opacity) { // see-through copy: the four season positions read as marks, the solid Earth is where it is now
+    g.traverse(function (o) { if (o.material) { o.material.transparent = true; o.material.opacity = opacity; o.material.depthWrite = false; } });
+    return g;
+  }
+  var markers = SEASONS.map(function (s) { var g = ghostify(earthLike(new THREE.Color(0x7fb06a), EARTH.tex), .62); scene.add(g); return g; });
 
   var orbitLines = [];
   function buildOrbits() {
