@@ -153,6 +153,7 @@
     <p class="pk-note"><b>轨道是椭圆，不是正圆。</b>每颗行星离太阳有近有远，越近走得越快（开普勒第二定律）。地球一月初最近，七月初最远，但相差只有 3%，所以冷热主要不是由远近决定。</p>
     <p class="pk-note"><b>压缩比例看得清，真实比例看得真。</b>真实比例下，水星到火星挤在中心一小团里，海王星在边缘。拖动放大条，或点“只看内行星”，能靠近看里面。</p>
     <p class="pk-note"><b>季节来自倾斜，不来自远近。</b>图上黑色短棍是地轴，红圈是赤道。四个节气处的小地球，地轴互相平行，说明地轴指向不变。夏至时北极一侧朝向太阳，阳光更直，白天更长；冬至时相反。春分、秋分太阳正对赤道，昼夜几乎等长。</p>
+    <p class="pk-note" style="font-size:12px">行星和太阳的表面贴图来自 Planet Pixel Emporium（James Hastings-Trew），仅作非商业展示。</p>
   </section>
 
   <footer class="pk-foot">
@@ -172,28 +173,28 @@
 
   // a: AU, e: eccentricity, w: longitude of perihelion, L0: mean longitude at J2000, P: orbital period in days
   var PLANETS = [
-    { id: 'mercury', name: '水星', en: 'Mercury', a: 0.3871, e: 0.2056, w: 77.46, L0: 252.25, P: 87.969, r: 4, col: '#8c8a82',
+    { id: 'mercury', tex: 'mercurymap.jpg', name: '水星', en: 'Mercury', a: 0.3871, e: 0.2056, w: 77.46, L0: 252.25, P: 87.969, r: 4, col: '#8c8a82',
       km: '5,790 万 km', year: '88 天', day: '59 个地球日', tilt: '0.03°', moons: '0', temp: '−170 ~ 430 ℃',
       fact: '离太阳最近、轨道最扁，也跑得最快。一个水星年还不到三个月。' },
-    { id: 'venus', name: '金星', en: 'Venus', a: 0.7233, e: 0.0068, w: 131.53, L0: 181.98, P: 224.701, r: 6.5, col: '#d9b46a',
+    { id: 'venus', tex: 'venusmap.jpg', name: '金星', en: 'Venus', a: 0.7233, e: 0.0068, w: 131.53, L0: 181.98, P: 224.701, r: 6.5, col: '#d9b46a',
       km: '1.08 亿 km', year: '225 天', day: '243 个地球日（倒着转）', tilt: '177°', moons: '0', temp: '约 465 ℃',
       fact: '自转极慢而且方向相反，它的一天比它的一年还长。' },
-    { id: 'earth', name: '地球', en: 'Earth', a: 1.0000, e: 0.0167, w: 102.94, L0: 100.46, P: 365.256, r: 6.5, col: '#4a86c5',
+    { id: 'earth', tex: 'earthmap1k.jpg', name: '地球', en: 'Earth', a: 1.0000, e: 0.0167, w: 102.94, L0: 100.46, P: 365.256, r: 6.5, col: '#4a86c5',
       km: '1.50 亿 km', year: '365.26 天', day: '23 小时 56 分', tilt: '23.4°', moons: '1', temp: '平均约 15 ℃',
       fact: '日地平均距离叫 1 个天文单位（AU），光走过去要约 8 分 20 秒。' },
-    { id: 'mars', name: '火星', en: 'Mars', a: 1.5237, e: 0.0934, w: 336.04, L0: 355.45, P: 686.98, r: 5, col: '#d4402a',
+    { id: 'mars', tex: 'marsmap1k.jpg', name: '火星', en: 'Mars', a: 1.5237, e: 0.0934, w: 336.04, L0: 355.45, P: 686.98, r: 5, col: '#d4402a',
       km: '2.28 亿 km', year: '687 天', day: '24 小时 37 分', tilt: '25.2°', moons: '2', temp: '−140 ~ 20 ℃',
       fact: '自转轴倾斜和地球差不多，所以火星也有四季，只是每个季节长得多。' },
-    { id: 'jupiter', name: '木星', en: 'Jupiter', a: 5.2029, e: 0.0484, w: 14.75, L0: 34.40, P: 4332.59, r: 10, col: '#c98d5a',
+    { id: 'jupiter', tex: 'jupitermap.jpg', name: '木星', en: 'Jupiter', a: 5.2029, e: 0.0484, w: 14.75, L0: 34.40, P: 4332.59, r: 10, col: '#c98d5a',
       km: '7.79 亿 km', year: '11.9 年', day: '9 小时 56 分', tilt: '3.1°', moons: '90 多颗', temp: '云顶约 −110 ℃',
       fact: '最大的行星，质量比其余七颗加起来还大。自转轴几乎竖直，没有明显的季节。' },
-    { id: 'saturn', name: '土星', en: 'Saturn', a: 9.5367, e: 0.0539, w: 92.43, L0: 49.94, P: 10759.22, r: 9, col: '#d8c27a', ring: true,
+    { id: 'saturn', tex: 'saturnmap.jpg', name: '土星', en: 'Saturn', a: 9.5367, e: 0.0539, w: 92.43, L0: 49.94, P: 10759.22, r: 9, col: '#d8c27a', ring: true,
       km: '14.3 亿 km', year: '29.5 年', day: '10 小时 34 分', tilt: '26.7°', moons: '200 多颗', temp: '云顶约 −140 ℃',
       fact: '密度比水还小。一个土星年将近三十年，一个季节就有七年多。' },
-    { id: 'uranus', name: '天王星', en: 'Uranus', a: 19.189, e: 0.0473, w: 170.96, L0: 313.23, P: 30688.5, r: 7, col: '#7fc4c4',
+    { id: 'uranus', tex: 'uranusmap.jpg', name: '天王星', en: 'Uranus', a: 19.189, e: 0.0473, w: 170.96, L0: 313.23, P: 30688.5, r: 7, col: '#7fc4c4',
       km: '28.7 亿 km', year: '84 年', day: '17 小时 14 分（倒着转）', tilt: '98°', moons: '28 颗', temp: '云顶约 −195 ℃',
       fact: '躺着绕太阳转：自转轴几乎贴在轨道面上，极点轮流对着太阳，一个极昼就长达四十多年。' },
-    { id: 'neptune', name: '海王星', en: 'Neptune', a: 30.07, e: 0.0086, w: 44.97, L0: 304.88, P: 60182, r: 7, col: '#4f6fb8',
+    { id: 'neptune', tex: 'neptunemap.jpg', name: '海王星', en: 'Neptune', a: 30.07, e: 0.0086, w: 44.97, L0: 304.88, P: 60182, r: 7, col: '#4f6fb8',
       km: '45.0 亿 km', year: '165 年', day: '16 小时 06 分', tilt: '28.3°', moons: '16 颗', temp: '云顶约 −200 ℃',
       fact: '1846 年先靠计算预言，再被望远镜找到。自 1846 年发现以来，它刚走完一圈多一点。' }
   ];
@@ -249,14 +250,18 @@
 
   var SPH = new THREE.SphereGeometry(1, 28, 18);
   var INKC = 0x1d1e1b;
-  function ball(col, lit) { // sphere with an ink outline (back-face shell) to match the paper-poster look
+  var TEXDIR = '../assets/planets/', TL = new THREE.TextureLoader();
+  function tex(n) { var t = TL.load(TEXDIR + n); t.anisotropy = 4; return t; }
+  function ball(col, lit, texName, pole) { // sphere with an ink outline (back-face shell) to match the paper-poster look
     var g = new THREE.Group();
     var o = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({ color: INKC, side: THREE.BackSide })); o.scale.setScalar(1.13);
-    var m = new THREE.Mesh(SPH, lit ? new THREE.MeshLambertMaterial({ color: col }) : new THREE.MeshBasicMaterial({ color: col }));
+    var opt = texName ? { map: tex(texName), color: 0xffffff } : { color: col };
+    var m = new THREE.Mesh(SPH, lit ? new THREE.MeshLambertMaterial(opt) : new THREE.MeshBasicMaterial(opt));
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pole || new THREE.Vector3(0, 0, 1)); // sphere poles point along y; our up is z
     g.add(o); g.add(m); return g;
   }
-  function earthLike(col) { // lit Earth with tilted axis and equator ring; the day side always faces the sun
-    var g = ball(col, true), axisGroup = new THREE.Group();
+  function earthLike(col, texName) { // lit Earth with tilted axis and equator ring; the day side always faces the sun
+    var g = ball(col, true, texName, AXIS), axisGroup = new THREE.Group();
     var L = 1.9, a = AXIS.clone();
     var line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a.clone().multiplyScalar(-L), a.clone().multiplyScalar(L)]), new THREE.LineBasicMaterial({ color: INKC }));
     var tip = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({ color: INKC })); tip.scale.setScalar(.14); tip.position.copy(a).multiplyScalar(L);
@@ -272,18 +277,20 @@
     x.fillStyle = gr; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c);
   }
 
-  var sunObj = ball(0xe58a1f, false), glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), depthWrite: false }));
+  var sunObj = ball(0xe58a1f, false, 'sunmap.jpg'), glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), depthWrite: false }));
   scene.add(sunObj); scene.add(glow);
   var objs = {};
   PLANETS.forEach(function (p) {
-    var g = p === EARTH ? earthLike(new THREE.Color(p.col)) : ball(new THREE.Color(p.col), true);
+    var g = p === EARTH ? earthLike(new THREE.Color(p.col), p.tex) : ball(new THREE.Color(p.col), true, p.tex);
     if (p.ring) {
-      var ring = new THREE.Mesh(new THREE.RingGeometry(1.45, 2.3, 56), new THREE.MeshBasicMaterial({ color: 0xcdb878, side: THREE.DoubleSide, transparent: true, opacity: .85 }));
+      var rg = new THREE.RingGeometry(1.45, 2.4, 72, 1), rp = rg.attributes.position, ru = rg.attributes.uv, rv = new THREE.Vector3();
+      for (var ri = 0; ri < rp.count; ri++) { rv.fromBufferAttribute(rp, ri); ru.setXY(ri, (rv.length() - 1.45) / .95, .5); } // map the strip texture along the radius
+      var ring = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ map: tex('saturnringcolor.jpg'), alphaMap: tex('saturnringpattern.gif'), side: THREE.DoubleSide, transparent: true, depthWrite: false }));
       ring.rotation.x = 26.7 * DEG; g.add(ring);
     }
     scene.add(g); objs[p.id] = g;
   });
-  var markers = SEASONS.map(function (s) { var g = earthLike(new THREE.Color(0x7fb06a)); scene.add(g); return g; });
+  var markers = SEASONS.map(function (s) { var g = earthLike(new THREE.Color(0x7fb06a), EARTH.tex); scene.add(g); return g; });
 
   var orbitLines = [];
   function buildOrbits() {
