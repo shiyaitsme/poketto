@@ -121,6 +121,7 @@
           <span class="lab">|</span>
           <button class="pk-chip zh" data-view="free" aria-pressed="true">自由旋转</button>
           <button class="pk-chip zh" data-view="top" aria-pressed="false">从上往下看</button>
+          <button class="pk-chip zh" data-view="side" aria-pressed="false">课本视角（侧面）</button>
         </div>
         <input class="pk-range" type="range" id="zoom" min="0" max="100" step="1" value="0" aria-label="放大">
         <div class="row">
@@ -152,7 +153,7 @@
     <div class="pk-h2"><small>How to read</small>怎么读这张图</div>
     <p class="pk-note"><b>轨道是椭圆，不是正圆。</b>每颗行星离太阳有近有远，越近走得越快（开普勒第二定律）。地球一月初最近，七月初最远，但相差只有 3%，所以冷热主要不是由远近决定。</p>
     <p class="pk-note"><b>压缩比例看得清，真实比例看得真。</b>真实比例下，水星到火星挤在中心一小团里，海王星在边缘。拖动放大条，或点“只看内行星”，能靠近看里面。</p>
-    <p class="pk-note"><b>季节来自倾斜，不来自远近。</b>图上黑色短棍是地轴，红圈是赤道。四个节气处的小地球，地轴互相平行，说明地轴指向不变。夏至时北极一侧朝向太阳，阳光更直，白天更长；冬至时相反。春分、秋分太阳正对赤道，昼夜几乎等长。</p>
+    <p class="pk-note"><b>季节来自倾斜，不来自远近。</b>图上黑色短棍是地轴，红圈是赤道。点“课本视角”，太阳在中间不动，冬至时地球在右边、夏至时在左边，地轴倾斜的方向始终不变。四个节气处的小地球，地轴互相平行，说明地轴指向不变。夏至时北极一侧朝向太阳，阳光更直，白天更长；冬至时相反。春分、秋分太阳正对赤道，昼夜几乎等长。</p>
     <p class="pk-note" style="font-size:12px">行星和太阳的表面贴图来自 Planet Pixel Emporium（James Hastings-Trew），仅作非商业展示。</p>
   </section>
 
@@ -243,7 +244,7 @@
   scene.add(new THREE.PointLight(0xffffff, 1.2, 0, 0));
 
   var MAXA = 30.5, WORLD = 100, EL_FREE = 52 * DEG, EL_TOP = 89.4 * DEG;
-  var cam = { az: -105 * DEG, el: EL_FREE, targetEl: EL_FREE };
+  var cam = { az: -105 * DEG, el: EL_FREE, targetEl: EL_FREE, targetAz: null }, EL_SIDE = 9 * DEG;
   var AXIS = new THREE.Vector3(0, Math.sin(TILT), Math.cos(TILT)); // Earth's axis: one fixed direction for the whole year
   function radial(r) { return WORLD * (S.scale === 'sqrt' ? Math.sqrt(r / MAXA) : r / MAXA); }
   function worldPos(r, lam) { var R = radial(r); return new THREE.Vector3(R * Math.cos(lam), R * Math.sin(lam), 0); }
@@ -329,6 +330,7 @@
     var d = dayOf(S.t), i, p;
     // camera: orbit around the sun; zoom moves it closer
     cam.el += (cam.targetEl - cam.el) * .12;
+    if (cam.targetAz !== null) { var da = Math.atan2(Math.sin(cam.targetAz - cam.az), Math.cos(cam.targetAz - cam.az)); cam.az += da * .12; }
     var dist = WORLD * 3.3 / S.zoom / Math.min(1, camera.aspect * 1.05);
     camera.position.set(dist * Math.cos(cam.el) * Math.cos(cam.az), dist * Math.cos(cam.el) * Math.sin(cam.az), dist * Math.sin(cam.el));
     camera.near = Math.max(.02, dist * .004); camera.updateProjectionMatrix();
@@ -339,7 +341,7 @@
     var sp = place('sun', new THREE.Vector3(0, 0, 11 * k), -4, S.names);
     for (i = 0; i < PLANETS.length; i++) {
       p = PLANETS[i]; var pos = kepler(p, d), v = worldPos(pos.r, pos.lam), o = objs[p.id];
-      o.position.copy(v); o.scale.setScalar(p.r * k * (p === EARTH ? 1 : 1));
+      o.position.copy(v); o.scale.setScalar(p.r * k * (p === EARTH && S.view === 'side' ? 2.2 : 1));
       if (p === EARTH) o.userData.axisGroup.visible = S.axis;
       var sel = S.sel === p.id;
       labels[p.id].classList.toggle('sel', sel);
@@ -349,8 +351,8 @@
     }
     for (i = 0; i < 4; i++) {
       var q = kepler(EARTH, dayOf(SEASONS[i].date)), mv = worldPos(q.r, q.lam);
-      markers[i].position.copy(mv); markers[i].scale.setScalar(6 * k); markers[i].userData.axisGroup.visible = S.axis;
-      place('s' + i, mv.clone().add(new THREE.Vector3(0, 0, 6 * k * 2.5)), -2, true);
+      markers[i].position.copy(mv); markers[i].scale.setScalar((S.view === 'side' ? 11 : 6) * k); markers[i].userData.axisGroup.visible = S.axis;
+      place('s' + i, mv.clone().add(new THREE.Vector3(0, 0, (S.view === 'side' ? 11 : 6) * k * 2.5)), -2, true);
     }
     renderer.render(scene, camera);
   }
@@ -364,7 +366,7 @@
     if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 5) drag.moved = true;
     if (!drag.moved) return;
     drag.x = e.clientX; drag.y = e.clientY;
-    cam.az -= dx * .008; cam.el = Math.max(.05, Math.min(EL_TOP, cam.el + dy * .006)); cam.targetEl = cam.el;
+    cam.targetAz = null; cam.az -= dx * .008; cam.el = Math.max(.05, Math.min(EL_TOP, cam.el + dy * .006)); cam.targetEl = cam.el;
     setView('free', true);
   });
   cv.addEventListener('pointerup', function (e) {
@@ -455,7 +457,11 @@
   });
   function setView(v, fromDrag) {
     S.view = v;
-    if (!fromDrag) cam.targetEl = v === 'top' ? EL_TOP : EL_FREE;
+    if (!fromDrag) {
+      cam.targetEl = v === 'top' ? EL_TOP : v === 'side' ? EL_SIDE : EL_FREE;
+      cam.targetAz = v === 'side' ? 0 : null; // camera on the +x side: the sun stays in the middle, Earth swings left and right
+      if (v === 'side') setZoom((S.scale === 'sqrt' ? Math.sqrt(MAXA / 1.3) : MAXA / 1.3) * .95);
+    }
     document.querySelectorAll('[data-view]').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.view === v); });
   }
   document.querySelectorAll('[data-view]').forEach(function (b) {
