@@ -39,14 +39,6 @@
   .info-grid b { font-weight: 400; font-size: 12px; color: var(--ink-2); }
   .info-grid i { font-style: normal; font-family: var(--mono); font-size: 13.5px; }
   .notes { display: grid; gap: 12px; max-width: 680px; }
-  .tilt-sec { display: grid; gap: 14px; }
-  .tilts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
-  .tilt { padding: 12px 12px 14px; --l: 12px; display: flex; flex-direction: column; gap: 4px; transition: background-color .2s ease; }
-  .tilt.now { background-color: rgba(185,224,76,.4); }
-  .tilt svg { width: 100%; height: auto; display: block; }
-  .tilt .t-name { font-weight: 900; font-size: 17px; line-height: 1.3; }
-  .tilt .t-name small { font-weight: 500; font-size: 12px; color: var(--ink-2); margin-left: 6px; }
-  .tilt p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--ink-2); }
   .bench { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
   .bench-ctrl { display: grid; gap: 20px; min-width: 0; }
   .bench-view { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--paper); padding: 8px 0 6px; }
@@ -142,12 +134,6 @@
       </section>
     </div>
   </div>
-
-  <section class="tilt-sec" aria-label="地轴方向">
-    <div class="pk-h2"><small>Axis</small>为什么冬至夏至，地轴“看起来”倾斜不同？</div>
-    <p class="pk-note" style="max-width:680px"><b>其实是同一个方向。</b>下面四张图用同一个视角看地球：地轴一直向右上方倾斜 23.4°，一点没变。变的是太阳的位置，所以同一条地轴，一会儿“朝着”太阳，一会儿“背着”太阳。</p>
-    <div class="tilts" id="tilts"></div>
-  </section>
 
   <section class="notes">
     <div class="pk-h2"><small>How to read</small>怎么读这张图</div>
@@ -383,7 +369,7 @@
   // ---------- UI ----------
   function dateText(ms) { var dt = new Date(ms); return dt.getFullYear() + '年' + (dt.getMonth() + 1) + '月' + dt.getDate() + '日'; }
   function fmtSpeed(v) { return v >= 365 ? '每秒 ' + (Math.round(v / 365.25 * 10) / 10) + ' 年' : '每秒 ' + v + ' 天'; }
-  var tilts = $('tilts'), lastSeason = -1, lastDateTxt = '';
+  var lastSeason = -1, lastDateTxt = '';
   function ui() {
     var txt = dateText(S.t);
     if (txt !== lastDateTxt) { $('date').textContent = txt; lastDateTxt = txt; }
@@ -391,7 +377,6 @@
     if (si !== lastSeason) {
       lastSeason = si;
       $('seasonNow').textContent = '北半球 · ' + SEASONS[si].hemi.replace('北半球', '') + '（' + SEASONS[si].name + '之后）';
-      [].forEach.call(tilts.children, function (el, k) { el.classList.toggle('now', k === si); });
     }
     var ep = kepler(EARTH, dayOf(S.t));
     $('earthSub').textContent = '地球离太阳 ' + (Math.round(ep.r * 1e4) / 1e4) + ' AU · 阳光走过来约 ' + (Math.round(ep.r * 8.317 * 10) / 10) + ' 分钟';
@@ -473,56 +458,6 @@
   $('namesOn').addEventListener('change', function () { S.names = this.checked; });
   document.querySelector('[data-scale="sqrt"]').click();
   zoomLab();
-
-  // ---------- axis diagrams: same camera, same axis, only the sun moves ----------
-  function tiltSvg(k) {
-    var cx = 75, cy = 66, R = 36, ux = Math.sin(TILT), uy = -Math.cos(TILT), deg = 23.4;
-    var sunSide = k === 1 ? 'r' : k === 3 ? 'l' : 'front';
-    var o = '<svg viewBox="0 0 150 132" role="img" aria-label="' + SEASONS[k].name + '时地球与太阳的相对位置">';
-    o += '<defs><clipPath id="cp' + k + '"><circle cx="' + cx + '" cy="' + cy + '" r="' + R + '"/></clipPath></defs>';
-    // sun + light arrows
-    if (sunSide !== 'front') {
-      var sxp = sunSide === 'r' ? 138 : 12, dir = sunSide === 'r' ? -1 : 1;
-      o += '<circle cx="' + sxp + '" cy="' + cy + '" r="9" fill="' + SUN + '" stroke="' + INK + '" stroke-width="1.5"/>';
-      [-16, 0, 16].forEach(function (dy) {
-        var x1 = sxp + dir * 16, x2 = sxp + dir * 30;
-        o += '<path d="M' + x1 + ' ' + (cy + dy) + ' H' + x2 + ' M' + (x2 - dir * 4) + ' ' + (cy + dy - 3) + ' L' + x2 + ' ' + (cy + dy) + ' L' + (x2 - dir * 4) + ' ' + (cy + dy + 3) + '" fill="none" stroke="' + INK + '" stroke-width="1.1"/>';
-      });
-      // night side
-      var nx = sunSide === 'r' ? cx - R : cx;
-      o += '<rect x="' + nx + '" y="' + (cy - R) + '" width="' + R + '" height="' + (2 * R) + '" clip-path="url(#cp' + k + ')" fill="rgba(29,30,27,.28)"/>';
-    } else {
-      var toward = k === 2;
-      o += '<circle cx="132" cy="22" r="9" fill="' + SUN + '" stroke="' + INK + '" stroke-width="1.5"/>';
-      o += toward ? '<circle cx="132" cy="22" r="2.2" fill="' + INK + '"/>' : '<path d="M127 17 L137 27 M137 17 L127 27" stroke="' + INK + '" stroke-width="1.5"/>';
-      o += '<text x="146" y="42" font-size="9.5" text-anchor="end" fill="' + INK2 + '">' + (toward ? '太阳在前方' : '太阳在后方') + '</text>';
-      // terminator through both poles
-      o += '<line x1="' + (cx - ux * R) + '" y1="' + (cy - uy * R) + '" x2="' + (cx + ux * R) + '" y2="' + (cy + uy * R) + '" stroke="' + INK2 + '" stroke-width="1" stroke-dasharray="3 3" clip-path="url(#cp' + k + ')"/>';
-    }
-    o += '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="none" stroke="' + INK + '" stroke-width="1.6"/>';
-    // equator
-    o += '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + R + '" ry="7" transform="rotate(' + deg + ' ' + cx + ' ' + cy + ')" fill="none" stroke="' + INK2 + '" stroke-width="1"/>';
-    // axis
-    var L = R + 16;
-    o += '<line x1="' + (cx - ux * L) + '" y1="' + (cy - uy * L) + '" x2="' + (cx + ux * L) + '" y2="' + (cy + uy * L) + '" stroke="' + INK + '" stroke-width="2.2"/>';
-    o += '<circle cx="' + (cx + ux * L) + '" cy="' + (cy + uy * L) + '" r="3" fill="' + INK + '"/>';
-    o += '<text x="' + (cx + ux * (L + 9)) + '" y="' + (cy + uy * (L + 9) + 3) + '" font-size="9.5" font-weight="700" fill="' + INK + '">北</text>';
-    // reference vertical (dashed) and angle
-    o += '<line x1="' + cx + '" y1="' + (cy - L - 2) + '" x2="' + cx + '" y2="' + (cy - R - 1) + '" stroke="' + INK2 + '" stroke-width="1" stroke-dasharray="2 3"/>';
-    o += '<text x="' + (cx + 4) + '" y="' + (cy - R - 6) + '" font-size="9" fill="' + INK2 + '">23.4°</text>';
-    return o + '</svg>';
-  }
-  var CAP = [
-    '太阳正对赤道。昼夜几乎等长，白天和黑夜的分界线正好经过南北两极。',
-    '地轴的北端偏向太阳：北半球被晒得更多，白天最长；北极圈内整天有太阳。',
-    '又一次正对赤道，昼夜几乎等长。地轴还是指着同一个方向，只是太阳换到了另一边。',
-    '地轴没变，但这回北端背着太阳：北半球白天最短；北极圈内整天见不到太阳。'
-  ];
-  SEASONS.forEach(function (s, k) {
-    var el = document.createElement('div'); el.className = 'tilt pk-br';
-    el.innerHTML = tiltSvg(k) + '<div class="t-name">' + s.name + '<small>' + s.md + '</small></div><p>' + CAP[k] + '</p>';
-    tilts.appendChild(el);
-  });
 
   // ---------- loop ----------
   var last = performance.now(), frame = 0;
