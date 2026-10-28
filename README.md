@@ -36,6 +36,7 @@ tools.json        工具清单（标题、学科、简介、链接）
 ## 已收录 / 计划收录
 
 - [x] 地理 · 地球上的东南西北（`tools/earth-directions.html`）
+- [x] 天文 · 太阳系的公转（`tools/solar-system.html`）
 
 ## 部署
 
