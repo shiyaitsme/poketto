@@ -1,0 +1,2 @@
+Planet and Sun surface maps: Planet Pixel Emporium (James Hastings-Trew), http://planetpixelemporium.com/planets.html
+Free for non-commercial use with credit. Copies taken from the threex.planets repository (https://github.com/jeromeetienne/threex.planets).

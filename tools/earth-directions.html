@@ -153,6 +153,7 @@
   <section class="notes">
     <div class="pk-h2"><small>How to read</small>怎么读这张图</div>
     <p class="pk-note"><b>东西来自自转。</b>地球自西向东转，站在地上的人被带向东。他转过去、背离太阳进入黑夜时，太阳就在他的西边，这就是日落。</p>
+    <p class="pk-note"><b>你的视角不动，地轴指向也不变。</b>地轴永远向右上倾斜 23.4°。切换节气时变的是太阳的位置：冬至太阳在左边，北极背着它；夏至太阳在右边，北极朝着它；春分、秋分太阳从侧面照来，正对赤道。</p>
     <p class="pk-note"><b>南北沿着地轴。</b>图里<span class="dotN pk-hl">黑色箭头</span>永远指向北极，<span class="dotE">红色箭头</span>指向东，灰色是它们的反方向。红线是赤道和人所在的经线。</p>
     <p class="pk-note"><b>偏南还是偏北，看太阳直射在哪。</b>夏半年直射北半球，北半球是东北升、西北落；冬半年是东南升、西南落；南半球正好相反。</p>
   </section>
@@ -461,14 +462,25 @@
   var npl = label('北极', COL.gray, 1.0, 0.25, 256, 64, 44); npl.position.set(0, 1.72, 0); earthG.add(npl);
   var spl = label('南极', COL.gray, 1.0, 0.25, 256, 64, 44); spl.position.set(0, -1.72, 0); earthG.add(spl);
 
-  [-0.8,-0.4,0,0.4,0.8].forEach(function(y){
-    var endX = -Math.sqrt(1-y*y) - 0.04, startX = -2.0;
-    scene.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(startX,y,0), endX-startX, 0xe58a1f, 0.14, 0.08));
-  });
-  var sunlab = label('太阳光', COL.sun, 0.9, 0.3, 192, 64, 40); sunlab.position.set(-1.55, 1.15, 0); scene.add(sunlab);
+  // The camera never moves relative to the sky and the axis always leans the same way.
+  // What changes with the season is where the sun is: the arrows and the light are rebuilt for it.
+  var sunG = new THREE.Group(); scene.add(sunG);
+  function buildSun(){
+    while(sunG.children.length) sunG.remove(sunG.children[0]);
+    var Pv = new THREE.Vector3(-S.y, S.x, 0);
+    [-0.8,-0.4,0,0.4,0.8].forEach(function(y){
+      var start = S.clone().multiplyScalar(2).add(Pv.clone().multiplyScalar(y));
+      var len = 2 - Math.sqrt(1-y*y) - 0.04;
+      sunG.add(new THREE.ArrowHelper(S.clone().negate(), start, len, 0xe58a1f, 0.14, 0.08));
+    });
+    var sl = label('太阳光', COL.sun, 0.9, 0.3, 192, 64, 40);
+    sl.position.copy(S).multiplyScalar(1.55).add(new THREE.Vector3(0, 1.15, 0));
+    sunG.add(sl);
+    sunL.position.copy(S).multiplyScalar(5);
+  }
 
   var S = new THREE.Vector3(-1,0,0);
-  var nAxis = new THREE.Vector3(Math.sin(TILT), Math.cos(TILT), 0);
+  var nAxis = new THREE.Vector3(Math.sin(TILT), Math.cos(TILT), 0); // fixed for the whole year
   var P0 = new THREE.Vector3(), Nl = new THREE.Vector3(), El = new THREE.Vector3(1,0,0);
   var markerG = null, h0 = 0;
 
@@ -515,9 +527,11 @@
 
   function applySeason(){
     var s = Math.sin(TILT), c = Math.cos(TILT);
-    if(state.season === 'winter') nAxis.set(s, c, 0);
-    else if(state.season === 'summer') nAxis.set(-s, c, 0);
-    else nAxis.set(0, c, s);
+    if(state.season === 'winter') S.set(-1, 0, 0);          // sun on the left: the north pole leans away from it
+    else if(state.season === 'summer') S.set(1, 0, 0);      // sun on the right: the north pole leans toward it
+    else S.set(-c, s, 0);                                   // equinox: sun exactly side-on to the axis
+    nAxis.set(s, c, 0);
+    buildSun();
     earthG.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), nAxis);
     calibrate();
   }

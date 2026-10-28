@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>太阳系的公转 · Poketto</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/poketto.css">
+<style>
+  /* tool-specific layout; look comes from poketto.css */
+  .stage { position: relative; padding: 0; overflow: hidden; --l: 18px; height: clamp(300px, 46vh, 460px); }
+  .stage canvas { position: relative; z-index: 1; display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  .badge { position: absolute; z-index: 2; top: 16px; left: 22px; pointer-events: none; }
+  .badge small { margin-left: 8px; font-family: var(--body); font-weight: 500; letter-spacing: .06em; color: var(--ink-2); text-transform: none; }
+  .lbls { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+  .lbl { position: absolute; left: 0; top: 0; font-weight: 700; font-size: 12px; line-height: 1.2; white-space: nowrap; color: var(--ink); text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper), 0 0 6px var(--paper); }
+  .lbl.sel { font-weight: 900; font-size: 13px; }
+  .lbl.season { font-size: 12.5px; padding: 0 5px; background: rgba(185,224,76,.75); }
+  .nogl[hidden] { display: none; }
+  .nogl { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--ink-2); }
+  .hint { position: absolute; z-index: 2; bottom: 14px; right: 22px; pointer-events: none; color: var(--ink-2); }
+  .panel { display: flex; flex-direction: column; gap: 14px; padding: 18px 24px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
+  .row.between { justify-content: space-between; }
+  .lab { font-size: 13px; color: var(--ink-2); margin: 0; }
+  .lab strong { color: var(--ink); font-weight: 700; }
+  .read { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+  .clock { font-family: var(--display); font-weight: 900; font-stretch: 112%; font-size: clamp(24px, 3.4vw, 34px); white-space: nowrap; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .sub { font-family: var(--mono); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .season-now { font-weight: 700; font-size: 16px; }
+  .planets { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .planets .pk-chip::before { background: var(--c, transparent); }
+  .planets .pk-chip[aria-pressed="true"] { background: linear-gradient(transparent 60%, rgba(185,224,76,.7) 60%); }
+  .info-name { font-weight: 900; font-size: 26px; line-height: 1.2; }
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 18px; }
+  .info-grid div { display: flex; flex-direction: column; min-width: 0; }
+  .info-grid b { font-weight: 400; font-size: 12px; color: var(--ink-2); }
+  .info-grid i { font-style: normal; font-family: var(--mono); font-size: 13.5px; }
+  .notes { display: grid; gap: 12px; max-width: 680px; }
+  .bench { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  .bench-ctrl { display: grid; gap: 20px; min-width: 0; }
+  .bench-view { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--paper); padding: 8px 0 6px; }
+  .bench-view .stage { background-color: var(--paper); }
+  @media (min-width: 900px) {
+    .bench { grid-template-columns: minmax(0, 1.3fr) minmax(300px, 1fr); gap: 28px; }
+    .bench-view { top: 16px; padding: 0; background: none; }
+    .bench-view .stage { height: min(640px, calc(100vh - 40px)); min-height: 400px; background-color: var(--veil); }
+  }
+</style>
+<script src="../assets/poketto.js" defer></script>
+</head>
+<body>
+<main class="pk-page">
+  <div class="pk-bar">
+    <a class="pk-home" href="../index.html" data-pk-wordmark title="回到 Poketto 首页"></a>
+    <div class="pk-label"><a href="../index.html" class="pk-zh">口袋工具箱</a> / Solar System &middot; <span class="pk-zh">天文</span></div>
+  </div>
+  <header class="pk-head">
+    <div class="pk-kicker">
+      <span class="pk-label">Tool No.03</span>
+      <span class="pk-label">Orbit &middot; Tilt &middot; Seasons</span>
+    </div>
+    <h1 class="pk-title">太阳系的<br>公转</h1>
+    <svg class="pk-star" viewBox="0 0 40 80" aria-hidden="true"><path d="M20 0 C21.2 26 22.5 33 40 38 C22.5 43 21.2 52 20 80 C18.8 52 17.5 43 0 38 C17.5 33 18.8 26 20 0Z"/></svg>
+    <div class="pk-br pk-lead">
+      <p class="pk-verse">八颗行星各走各的轨道，快慢差得很远。<br>拖动画面转着看，点一颗行星看数据，<br>再看地球：地轴指向始终没变，季节却换了四次。</p>
+    </div>
+  </header>
+
+  <div class="bench">
+    <div class="bench-view">
+      <section class="stage pk-br pk-veil" aria-label="太阳系轨道图">
+        <canvas id="cv" aria-label="可拖动旋转的太阳系 3D 轨道图，点击行星查看信息"></canvas>
+        <div class="lbls" id="lbls" aria-hidden="true"></div>
+        <div class="nogl" id="nogl" hidden>这个环境打不开 3D 画面，下面的数据和示意图仍然可用。</div>
+        <div class="badge pk-label" id="badge">Solar System<small id="badge2"></small></div>
+        <div class="hint pk-label">拖动旋转 · 滚轮缩放 / Drag</div>
+      </section>
+    </div>
+
+    <div class="bench-ctrl">
+      <section class="panel pk-br pk-veil" aria-label="时间">
+        <div class="pk-h2"><small>Time</small>日期与速度</div>
+        <div class="read">
+          <div class="clock" id="date">2026年1月1日</div>
+          <div class="season-now" id="seasonNow"></div>
+        </div>
+        <div class="sub" id="earthSub"></div>
+        <div class="row">
+          <button class="pk-chip zh on" id="play" aria-pressed="true">播放</button>
+          <button class="pk-chip zh" data-jump="today">今天</button>
+          <button class="pk-chip zh" data-jump="0">春分</button>
+          <button class="pk-chip zh" data-jump="1">夏至</button>
+          <button class="pk-chip zh" data-jump="2">秋分</button>
+          <button class="pk-chip zh" data-jump="3">冬至</button>
+        </div>
+        <div class="row between">
+          <span class="lab">速度</span><span class="lab" id="speedLab"></span>
+        </div>
+        <input class="pk-range" type="range" id="speed" min="0" max="7" step="1" value="3" aria-label="播放速度">
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="画面">
+        <div class="row between">
+          <div class="pk-h2"><small>View</small>比例与视角</div>
+          <span class="lab" id="zoomLab"></span>
+        </div>
+        <div class="row">
+          <button class="pk-chip zh" data-scale="sqrt" aria-pressed="true">压缩比例</button>
+          <button class="pk-chip zh" data-scale="linear" aria-pressed="false">真实比例</button>
+          <span class="lab">|</span>
+          <button class="pk-chip zh" data-view="free" aria-pressed="true">自由旋转</button>
+          <button class="pk-chip zh" data-view="top" aria-pressed="false">从上往下看</button>
+          <button class="pk-chip zh" data-view="side" aria-pressed="false">课本视角（侧面）</button>
+        </div>
+        <input class="pk-range" type="range" id="zoom" min="0" max="100" step="1" value="0" aria-label="放大">
+        <div class="row">
+          <button class="pk-chip zh" id="zAll">看全部</button>
+          <button class="pk-chip zh" id="zInner">只看内行星</button>
+          <label class="pk-check"><input type="checkbox" id="axisOn" checked>画出地轴</label>
+          <label class="pk-check"><input type="checkbox" id="namesOn" checked>行星名字</label>
+        </div>
+        <p class="lab" id="scaleNote"></p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="行星信息">
+        <div class="pk-h2"><small>Planet</small>选一颗行星</div>
+        <div class="planets" id="planets" role="group" aria-label="选择行星"></div>
+        <div class="info-name" id="iName"></div>
+        <div class="info-grid" id="iGrid"></div>
+        <p class="lab" id="iFact"></p>
+      </section>
+    </div>
+  </div>
+
+  <section class="notes">
+    <div class="pk-h2"><small>How to read</small>怎么读这张图</div>
+    <p class="pk-note"><b>轨道是椭圆，不是正圆。</b>每颗行星离太阳有近有远，越近走得越快（开普勒第二定律）。地球一月初最近，七月初最远，但相差只有 3%，所以冷热主要不是由远近决定。</p>
+    <p class="pk-note"><b>压缩比例看得清，真实比例看得真。</b>真实比例下，水星到火星挤在中心一小团里，海王星在边缘。拖动放大条，或点“只看内行星”，能靠近看里面。</p>
+    <p class="pk-note"><b>季节来自倾斜，不来自远近。</b>图上黑色短棍是地轴，红圈是赤道。点“课本视角”，太阳在中间不动，冬至时地球在右边、夏至时在左边，地轴倾斜的方向始终不变。四个节气处的小地球，地轴互相平行，说明地轴指向不变。夏至时北极一侧朝向太阳，阳光更直，白天更长；冬至时相反。春分、秋分太阳正对赤道，昼夜几乎等长。</p>
+    <p class="pk-note" style="font-size:12px">行星和太阳的表面贴图来自 Planet Pixel Emporium（James Hastings-Trew），仅作非商业展示。</p>
+  </section>
+
+  <footer class="pk-foot">
+    <a class="pk-back pk-label" href="../index.html">
+      <svg viewBox="0 0 34 10" aria-hidden="true"><path d="M34 5 H2 M7 1 L2 5 L7 9" fill="none" stroke="#1d1e1b" stroke-width="1.4"/></svg>
+      回到口袋 <span class="zh">/ Back to the pocket</span>
+    </a>
+    <span class="pk-label">Poketto &middot; Made with curiosity</span>
+  </footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var DEG = Math.PI / 180, TILT = 23.4 * DEG, J2000 = Date.UTC(2000, 0, 1, 12), DAY = 86400000;
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  // a: AU, e: eccentricity, w: longitude of perihelion, L0: mean longitude at J2000, P: orbital period in days
+  var PLANETS = [
+    { id: 'mercury', tex: 'mercurymap.jpg', name: '水星', en: 'Mercury', a: 0.3871, e: 0.2056, w: 77.46, L0: 252.25, P: 87.969, r: 4, col: '#8c8a82',
+      km: '5,790 万 km', year: '88 天', day: '59 个地球日', tilt: '0.03°', moons: '0', temp: '−170 ~ 430 ℃',
+      fact: '离太阳最近、轨道最扁，也跑得最快。一个水星年还不到三个月。' },
+    { id: 'venus', tex: 'venusmap.jpg', name: '金星', en: 'Venus', a: 0.7233, e: 0.0068, w: 131.53, L0: 181.98, P: 224.701, r: 6.5, col: '#d9b46a',
+      km: '1.08 亿 km', year: '225 天', day: '243 个地球日（倒着转）', tilt: '177°', moons: '0', temp: '约 465 ℃',
+      fact: '自转极慢而且方向相反，它的一天比它的一年还长。' },
+    { id: 'earth', tex: 'earthmap1k.jpg', name: '地球', en: 'Earth', a: 1.0000, e: 0.0167, w: 102.94, L0: 100.46, P: 365.256, r: 6.5, col: '#4a86c5',
+      km: '1.50 亿 km', year: '365.26 天', day: '23 小时 56 分', tilt: '23.4°', moons: '1', temp: '平均约 15 ℃',
+      fact: '日地平均距离叫 1 个天文单位（AU），光走过去要约 8 分 20 秒。' },
+    { id: 'mars', tex: 'marsmap1k.jpg', name: '火星', en: 'Mars', a: 1.5237, e: 0.0934, w: 336.04, L0: 355.45, P: 686.98, r: 5, col: '#d4402a',
+      km: '2.28 亿 km', year: '687 天', day: '24 小时 37 分', tilt: '25.2°', moons: '2', temp: '−140 ~ 20 ℃',
+      fact: '自转轴倾斜和地球差不多，所以火星也有四季，只是每个季节长得多。' },
+    { id: 'jupiter', tex: 'jupitermap.jpg', name: '木星', en: 'Jupiter', a: 5.2029, e: 0.0484, w: 14.75, L0: 34.40, P: 4332.59, r: 10, col: '#c98d5a',
+      km: '7.79 亿 km', year: '11.9 年', day: '9 小时 56 分', tilt: '3.1°', moons: '90 多颗', temp: '云顶约 −110 ℃',
+      fact: '最大的行星，质量比其余七颗加起来还大。自转轴几乎竖直，没有明显的季节。' },
+    { id: 'saturn', tex: 'saturnmap.jpg', name: '土星', en: 'Saturn', a: 9.5367, e: 0.0539, w: 92.43, L0: 49.94, P: 10759.22, r: 9, col: '#d8c27a', ring: true,
+      km: '14.3 亿 km', year: '29.5 年', day: '10 小时 34 分', tilt: '26.7°', moons: '200 多颗', temp: '云顶约 −140 ℃',
+      fact: '密度比水还小。一个土星年将近三十年，一个季节就有七年多。' },
+    { id: 'uranus', tex: 'uranusmap.jpg', name: '天王星', en: 'Uranus', a: 19.189, e: 0.0473, w: 170.96, L0: 313.23, P: 30688.5, r: 7, col: '#7fc4c4',
+      km: '28.7 亿 km', year: '84 年', day: '17 小时 14 分（倒着转）', tilt: '98°', moons: '28 颗', temp: '云顶约 −195 ℃',
+      fact: '躺着绕太阳转：自转轴几乎贴在轨道面上，极点轮流对着太阳，一个极昼就长达四十多年。' },
+    { id: 'neptune', tex: 'neptunemap.jpg', name: '海王星', en: 'Neptune', a: 30.07, e: 0.0086, w: 44.97, L0: 304.88, P: 60182, r: 7, col: '#4f6fb8',
+      km: '45.0 亿 km', year: '165 年', day: '16 小时 06 分', tilt: '28.3°', moons: '16 颗', temp: '云顶约 −200 ℃',
+      fact: '1846 年先靠计算预言，再被望远镜找到。自 1846 年发现以来，它刚走完一圈多一点。' }
+  ];
+  var EARTH = PLANETS[2];
+
+  // Kepler: heliocentric position of a planet, d = days since J2000
+  function kepler(p, d) {
+    var M = ((p.L0 - p.w + 360 * d / p.P) % 360) * DEG, E = M;
+    for (var i = 0; i < 8; i++) E = E - (E - p.e * Math.sin(E) - M) / (1 - p.e * Math.cos(E));
+    var nu = 2 * Math.atan2(Math.sqrt(1 + p.e) * Math.sin(E / 2), Math.sqrt(1 - p.e) * Math.cos(E / 2));
+    return { r: p.a * (1 - p.e * Math.cos(E)), lam: nu + p.w * DEG, nu: nu };
+  }
+  function dayOf(ms) { return (ms - J2000) / DAY; }
+
+  // equinoxes/solstices of 2026 (UTC); the four markers on Earth's orbit are placed where Earth really is on those dates
+  var SEASONS = [
+    { name: '春分', en: 'Mar', date: Date.UTC(2026, 2, 20, 14, 46), md: '3月20日前后', hemi: '北半球春天' },
+    { name: '夏至', en: 'Jun', date: Date.UTC(2026, 5, 21, 8, 24), md: '6月21日前后', hemi: '北半球夏天' },
+    { name: '秋分', en: 'Sep', date: Date.UTC(2026, 8, 23, 0, 5), md: '9月23日前后', hemi: '北半球秋天' },
+    { name: '冬至', en: 'Dec', date: Date.UTC(2026, 11, 21, 20, 50), md: '12月21日前后', hemi: '北半球冬天' }
+  ];
+  function seasonIndexOf(ms) {
+    var dt = new Date(ms), y = dt.getUTCFullYear(), best = 3;
+    for (var i = 0; i < 4; i++) {
+      var s = new Date(SEASONS[i].date), t = Date.UTC(y, s.getUTCMonth(), s.getUTCDate(), s.getUTCHours(), s.getUTCMinutes());
+      if (ms >= t) best = i;
+    }
+    return best;
+  }
+
+  var SPEEDS = [1, 5, 15, 30, 90, 365, 1500, 5000]; // days per second
+  var S = { t: Date.now(), playing: true, speed: 3, scale: 'sqrt', view: 'free', zoom: 1, sel: 'earth', axis: true, names: true };
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) S.playing = false;
+
+  var css = getComputedStyle(document.documentElement);
+  function cssv(n, d) { return (css.getPropertyValue(n) || d).trim() || d; }
+  var INK = cssv('--ink', '#1d1e1b'), INK2 = cssv('--ink-2', '#4a4c45'), SUN = cssv('--sun', '#e58a1f');
+
+  // ---------- 3D scene (three.js): orbit plane is x/y, z points up, north ecliptic pole ----------
+  var cv = $('cv'), lblBox = $('lbls'), W = 0, H = 0, hits = [], renderer = null;
+  try { renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); } catch (e) { renderer = null; }
+  if (!renderer) $('nogl').hidden = false;
+  var scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(40, 1, 0.05, 4000);
+  camera.up.set(0, 0, 1);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  scene.add(new THREE.PointLight(0xffffff, 1.2, 0, 0));
+
+  var MAXA = 30.5, WORLD = 100, EL_FREE = 52 * DEG, EL_TOP = 89.4 * DEG;
+  var cam = { az: -105 * DEG, el: EL_FREE, targetEl: EL_FREE, targetAz: null }, EL_SIDE = 9 * DEG;
+  var AXIS = new THREE.Vector3(0, Math.sin(TILT), Math.cos(TILT)); // Earth's axis: one fixed direction for the whole year
+  function radial(r) { return WORLD * (S.scale === 'sqrt' ? Math.sqrt(r / MAXA) : r / MAXA); }
+  function worldPos(r, lam) { var R = radial(r); return new THREE.Vector3(R * Math.cos(lam), R * Math.sin(lam), 0); }
+
+  var SPH = new THREE.SphereGeometry(1, 28, 18);
+  var INKC = 0x1d1e1b;
+  var TEXDIR = '../assets/planets/', TL = new THREE.TextureLoader();
+  function tex(n) { var t = TL.load(TEXDIR + n); t.anisotropy = 4; return t; }
+  function ball(col, lit, texName, pole) { // sphere with an ink outline (back-face shell) to match the paper-poster look
+    var g = new THREE.Group();
+    var o = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({ color: INKC, side: THREE.BackSide })); o.scale.setScalar(1.13);
+    var opt = texName ? { map: tex(texName), color: 0xffffff } : { color: col };
+    var m = new THREE.Mesh(SPH, lit ? new THREE.MeshLambertMaterial(opt) : new THREE.MeshBasicMaterial(opt));
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pole || new THREE.Vector3(0, 0, 1)); // sphere poles point along y; our up is z
+    g.add(o); g.add(m); return g;
+  }
+  function earthLike(col, texName) { // lit Earth with tilted axis and equator ring; the day side always faces the sun
+    var g = ball(col, true, texName, AXIS), axisGroup = new THREE.Group();
+    var L = 1.9, a = AXIS.clone();
+    var line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a.clone().multiplyScalar(-L), a.clone().multiplyScalar(L)]), new THREE.LineBasicMaterial({ color: INKC }));
+    var tip = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({ color: INKC })); tip.scale.setScalar(.14); tip.position.copy(a).multiplyScalar(L);
+    var u = new THREE.Vector3(1, 0, 0), v = new THREE.Vector3().crossVectors(a, u), pts = [];
+    for (var i = 0; i <= 64; i++) { var t = i / 64 * Math.PI * 2; pts.push(u.clone().multiplyScalar(Math.cos(t) * 1.04).add(v.clone().multiplyScalar(Math.sin(t) * 1.04))); }
+    var eq = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xd4402a }));
+    axisGroup.add(line); axisGroup.add(tip); axisGroup.add(eq); g.add(axisGroup); g.userData.axisGroup = axisGroup;
+    return g;
+  }
+  function glowTex() {
+    var c = document.createElement('canvas'); c.width = c.height = 128; var x = c.getContext('2d');
+    var gr = x.createRadialGradient(64, 64, 6, 64, 64, 64); gr.addColorStop(0, 'rgba(229,138,31,.55)'); gr.addColorStop(1, 'rgba(229,138,31,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c);
+  }
+
+  var sunObj = ball(0xe58a1f, false, 'sunmap.jpg'), glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), depthWrite: false }));
+  scene.add(sunObj); scene.add(glow);
+  var objs = {};
+  PLANETS.forEach(function (p) {
+    var g = p === EARTH ? earthLike(new THREE.Color(p.col), p.tex) : ball(new THREE.Color(p.col), true, p.tex);
+    if (p.ring) {
+      var rg = new THREE.RingGeometry(1.45, 2.4, 72, 1), rp = rg.attributes.position, ru = rg.attributes.uv, rv = new THREE.Vector3();
+      for (var ri = 0; ri < rp.count; ri++) { rv.fromBufferAttribute(rp, ri); ru.setXY(ri, (rv.length() - 1.45) / .95, .5); } // map the strip texture along the radius
+      var ring = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ map: tex('saturnringcolor.jpg'), alphaMap: tex('saturnringpattern.gif'), side: THREE.DoubleSide, transparent: true, depthWrite: false }));
+      ring.rotation.x = 26.7 * DEG; g.add(ring);
+    }
+    scene.add(g); objs[p.id] = g;
+  });
+  var markers = SEASONS.map(function (s) { var g = earthLike(new THREE.Color(0x7fb06a), EARTH.tex); scene.add(g); return g; });
+
+  var orbitLines = [];
+  function buildOrbits() {
+    orbitLines.forEach(function (l) { scene.remove(l); l.geometry.dispose(); l.material.dispose(); });
+    orbitLines = PLANETS.map(function (p) {
+      var pts = [];
+      for (var k = 0; k <= 240; k++) { var nu = k / 240 * Math.PI * 2, r = p.a * (1 - p.e * p.e) / (1 + p.e * Math.cos(nu)); pts.push(worldPos(r, nu + p.w * DEG)); }
+      var l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: INKC, transparent: true, opacity: p === EARTH ? .95 : .4 }));
+      scene.add(l); return l;
+    });
+  }
+
+  // HTML labels projected onto the canvas keep the real text rendering
+  var labels = {};
+  function mkLabel(id, text, cls) { var d = document.createElement('div'); d.className = 'lbl ' + (cls || ''); d.textContent = text; lblBox.appendChild(d); labels[id] = d; return d; }
+  mkLabel('sun', '太阳'); PLANETS.forEach(function (p) { mkLabel(p.id, p.name); }); SEASONS.forEach(function (s, i) { mkLabel('s' + i, s.name, 'season'); });
+  function place(id, v3, dy, show) {
+    var el = labels[id], v = v3.clone().project(camera);
+    if (!show || v.z > 1) { el.style.display = 'none'; return null; }
+    var x = (v.x * .5 + .5) * W, y = (-v.y * .5 + .5) * H;
+    el.style.display = ''; el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + (y + dy).toFixed(1) + 'px) translate(-50%,-100%)';
+    return [x, y];
+  }
+
+  function resize() {
+    var r = cv.getBoundingClientRect(); W = r.width; H = r.height;
+    if (!renderer || !W || !H) return;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setSize(W, H, false);
+    camera.aspect = W / H; camera.updateProjectionMatrix();
+  }
+
+  var lastScale = null;
+  function draw() {
+    if (!renderer) return;
+    if (lastScale !== S.scale) { lastScale = S.scale; buildOrbits(); }
+    var d = dayOf(S.t), i, p;
+    // camera: orbit around the sun; zoom moves it closer
+    cam.el += (cam.targetEl - cam.el) * .12;
+    if (cam.targetAz !== null) { var da = Math.atan2(Math.sin(cam.targetAz - cam.az), Math.cos(cam.targetAz - cam.az)); cam.az += da * .12; }
+    var dist = WORLD * 3.3 / S.zoom / Math.min(1, camera.aspect * 1.05);
+    camera.position.set(dist * Math.cos(cam.el) * Math.cos(cam.az), dist * Math.cos(cam.el) * Math.sin(cam.az), dist * Math.sin(cam.el));
+    camera.near = Math.max(.02, dist * .004); camera.updateProjectionMatrix();
+    camera.lookAt(0, 0, 0);
+    var k = dist / 330 * .5; // bodies keep a constant look on screen, not true size
+    sunObj.scale.setScalar(11 * k); glow.scale.setScalar(70 * k);
+    hits = [];
+    var sp = place('sun', new THREE.Vector3(0, 0, 11 * k), -4, S.names);
+    for (i = 0; i < PLANETS.length; i++) {
+      p = PLANETS[i]; var pos = kepler(p, d), v = worldPos(pos.r, pos.lam), o = objs[p.id];
+      o.position.copy(v); o.scale.setScalar(p.r * k * (p === EARTH && S.view === 'side' ? 2.2 : 1));
+      if (p === EARTH) o.userData.axisGroup.visible = S.axis;
+      var sel = S.sel === p.id;
+      labels[p.id].classList.toggle('sel', sel);
+      var s2 = place(p.id, v.clone().add(new THREE.Vector3(0, 0, p.r * k * 1.6)), -2, S.names || sel);
+      var sc = v.clone().project(camera);
+      if (sc.z < 1) hits.push({ id: p.id, x: (sc.x * .5 + .5) * W, y: (-sc.y * .5 + .5) * H, r: Math.max(p.r * .9 + 10, 16) });
+    }
+    for (i = 0; i < 4; i++) {
+      var q = kepler(EARTH, dayOf(SEASONS[i].date)), mv = worldPos(q.r, q.lam);
+      markers[i].position.copy(mv); markers[i].scale.setScalar((S.view === 'side' ? 11 : 6) * k); markers[i].userData.axisGroup.visible = S.axis;
+      place('s' + i, mv.clone().add(new THREE.Vector3(0, 0, (S.view === 'side' ? 11 : 6) * k * 2.5)), -2, true);
+    }
+    renderer.render(scene, camera);
+  }
+
+  // drag to rotate, wheel to zoom, tap to pick
+  var drag = null;
+  cv.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
+  cv.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 5) drag.moved = true;
+    if (!drag.moved) return;
+    drag.x = e.clientX; drag.y = e.clientY;
+    cam.targetAz = null; cam.az -= dx * .008; cam.el = Math.max(.05, Math.min(EL_TOP, cam.el + dy * .006)); cam.targetEl = cam.el;
+    setView('free', true);
+  });
+  cv.addEventListener('pointerup', function (e) {
+    if (drag && !drag.moved) {
+      var r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, best = null, bd = 1e9;
+      hits.forEach(function (h) { var dd = Math.hypot(h.x - x, h.y - y); if (dd < h.r && dd < bd) { bd = dd; best = h; } });
+      if (best) select(best.id);
+    }
+    drag = null;
+  });
+  cv.addEventListener('pointercancel', function () { drag = null; });
+  cv.addEventListener('wheel', function (ev) { ev.preventDefault(); setZoom(S.zoom * Math.exp(-ev.deltaY * .0015)); }, { passive: false });
+
+  // ---------- UI ----------
+  function dateText(ms) { var dt = new Date(ms); return dt.getFullYear() + '年' + (dt.getMonth() + 1) + '月' + dt.getDate() + '日'; }
+  function fmtSpeed(v) { return v >= 365 ? '每秒 ' + (Math.round(v / 365.25 * 10) / 10) + ' 年' : '每秒 ' + v + ' 天'; }
+  var lastSeason = -1, lastDateTxt = '';
+  function ui() {
+    var txt = dateText(S.t);
+    if (txt !== lastDateTxt) { $('date').textContent = txt; lastDateTxt = txt; }
+    var si = seasonIndexOf(S.t);
+    if (si !== lastSeason) {
+      lastSeason = si;
+      $('seasonNow').textContent = '北半球 · ' + SEASONS[si].hemi.replace('北半球', '') + '（' + SEASONS[si].name + '之后）';
+    }
+    var ep = kepler(EARTH, dayOf(S.t));
+    $('earthSub').textContent = '地球离太阳 ' + (Math.round(ep.r * 1e4) / 1e4) + ' AU · 阳光走过来约 ' + (Math.round(ep.r * 8.317 * 10) / 10) + ' 分钟';
+  }
+  function fillInfo() {
+    var p = PLANETS.filter(function (x) { return x.id === S.sel; })[0];
+    $('iName').textContent = p.name + ' ' + p.en;
+    var pos = kepler(p, dayOf(S.t));
+    var v = 29.78 * Math.sqrt(2 / pos.r - 1 / p.a);
+    var rows = [['离太阳平均距离', p.a + ' AU（' + p.km + '）'], ['公转一圈', p.year], ['自转一圈（一天）', p.day], ['地轴倾斜', p.tilt], ['卫星', p.moons], ['表面温度', p.temp], ['轨道扁度 e', String(p.e)], ['此刻离太阳', (Math.round(pos.r * 100) / 100) + ' AU'], ['此刻轨道速度', (Math.round(v * 10) / 10) + ' km/s']];
+    var g = $('iGrid'); g.innerHTML = '';
+    rows.forEach(function (r) { var d = document.createElement('div'); d.innerHTML = '<b></b><i></i>'; d.firstChild.textContent = r[0]; d.lastChild.textContent = r[1]; g.appendChild(d); });
+    $('iFact').textContent = p.fact;
+    [].forEach.call($('planets').children, function (b) { b.setAttribute('aria-pressed', b.dataset.id === S.sel ? 'true' : 'false'); });
+  }
+  function select(id) { S.sel = id; fillInfo(); }
+
+  PLANETS.forEach(function (p) {
+    var b = document.createElement('button'); b.className = 'pk-chip zh'; b.textContent = p.name; b.dataset.id = p.id; b.style.setProperty('--c', p.col);
+    b.addEventListener('click', function () { select(p.id); });
+    $('planets').appendChild(b);
+  });
+  cv.addEventListener('click', function (ev) {
+    var r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, best = null, bd = 1e9;
+    hits.forEach(function (h) { var dd = Math.hypot(h.x - x, h.y - y); if (dd < h.r && dd < bd) { bd = dd; best = h; } });
+    if (best) select(best.id);
+  });
+
+  $('play').addEventListener('click', function () { S.playing = !S.playing; this.setAttribute('aria-pressed', S.playing); this.classList.toggle('on', S.playing); this.textContent = S.playing ? '暂停' : '播放'; });
+  function syncPlay() { var b = $('play'); b.setAttribute('aria-pressed', S.playing); b.classList.toggle('on', S.playing); b.textContent = S.playing ? '暂停' : '播放'; }
+  syncPlay();
+  document.querySelectorAll('[data-jump]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var j = b.dataset.jump;
+      if (j === 'today') { S.t = Date.now(); return; }
+      var y = new Date(S.t).getUTCFullYear(), s = new Date(SEASONS[+j].date);
+      S.t = Date.UTC(y, s.getUTCMonth(), s.getUTCDate(), s.getUTCHours(), s.getUTCMinutes());
+      S.playing = false; syncPlay();
+    });
+  });
+  $('speed').addEventListener('input', function () { S.speed = +this.value; $('speedLab').textContent = fmtSpeed(SPEEDS[S.speed]); });
+  $('speed').value = S.speed; $('speedLab').textContent = fmtSpeed(SPEEDS[S.speed]);
+
+  // zoom slider 0..100 -> 1x .. 40x, logarithmic
+  function zoomFromSlider(v) { return Math.pow(40, v / 100); }
+  function sliderFromZoom(z) { return Math.round(Math.log(z) / Math.log(40) * 100); }
+  function setZoom(z) { S.zoom = Math.max(1, Math.min(40, z)); $('zoom').value = sliderFromZoom(S.zoom); zoomLab(); }
+  function zoomLab() { $('zoomLab').textContent = '放大 ' + (Math.round(S.zoom * 10) / 10) + '×'; }
+  $('zoom').addEventListener('input', function () { S.zoom = zoomFromSlider(+this.value); zoomLab(); });
+  function fitInner() { // make Mars's orbit roughly fill the stage
+    var rm = 1.67, f = S.scale === 'sqrt' ? Math.sqrt(MAXA / rm) : MAXA / rm; setZoom(f * .95);
+  }
+  $('zAll').addEventListener('click', function () { setZoom(1); });
+  $('zInner').addEventListener('click', fitInner);
+  document.querySelectorAll('[data-scale]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      S.scale = b.dataset.scale; setZoom(1);
+      document.querySelectorAll('[data-scale]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      $('scaleNote').textContent = S.scale === 'sqrt'
+        ? '压缩比例：画面距离 ∝ 轨道半径的平方根，外行星被拉近，方便一次看全。行星大小也不是真实比例。'
+        : '真实比例：画面距离 ∝ 轨道半径。海王星的轨道半径是地球的 30 倍，所以内行星挤在中心，请用放大或“只看内行星”。行星大小不是真实比例。';
+    });
+  });
+  function setView(v, fromDrag) {
+    S.view = v;
+    if (!fromDrag) {
+      cam.targetEl = v === 'top' ? EL_TOP : v === 'side' ? EL_SIDE : EL_FREE;
+      cam.targetAz = v === 'side' ? 0 : null; // camera on the +x side: the sun stays in the middle, Earth swings left and right
+      if (v === 'side') setZoom((S.scale === 'sqrt' ? Math.sqrt(MAXA / 1.3) : MAXA / 1.3) * .95);
+    }
+    document.querySelectorAll('[data-view]').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.view === v); });
+  }
+  document.querySelectorAll('[data-view]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      setView(b.dataset.view, false);
+    });
+  });
+  $('axisOn').addEventListener('change', function () { S.axis = this.checked; });
+  $('namesOn').addEventListener('change', function () { S.names = this.checked; });
+  document.querySelector('[data-scale="sqrt"]').click();
+  zoomLab();
+
+  // ---------- loop ----------
+  var last = performance.now(), frame = 0;
+  function loop(now) {
+    var dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (S.playing) S.t += dt * SPEEDS[S.speed] * DAY;
+    if (!W) resize();
+    draw(); ui();
+    if ((++frame % 20) === 0) fillInfo();
+    requestAnimationFrame(loop);
+  }
+  window.addEventListener('resize', resize);
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(cv);
+  resize(); fillInfo();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
