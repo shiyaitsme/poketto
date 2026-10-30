@@ -22,5 +22,11 @@
     "subject": "物理",
     "description": "从蓝天晚霞到肥皂膜的彩色，再到池底的光纹：切换生活场景，调节太阳、膜厚和水面，观察散射、干涉与折射。",
     "url": "tools/light.html"
+  },
+  {
+    "title": "维纳斯带",
+    "subject": "物理",
+    "description": "拖动日落，同时观察东边天空与地球光路剖面，看地影怎样抬升、粉色暮光怎样形成。",
+    "url": "tools/belt-of-venus.html"
   }
 ]
