@@ -46,6 +46,8 @@ assets/           共享设计样式、纸张与笔刷效果、工具脚本
 
 ## 已收录
 
+- [x] 物理 · 维纳斯带（`tools/belt-of-venus.html`）：拖动太阳高度，同步观察东侧暮光天空与地球光路剖面；支持日落播放、阶段切换、文字与光路开关，以及粉色光带成因说明。页面为自包含 HTML，可独立打开；颜色与几何为教学示意，不是精确暮光预测。
+
 - [x] 地理 · 地球上的东南西北（`tools/earth-directions.html`）
 - [x] 天文 · 太阳系的公转（`tools/solar-system.html`）
 - [x] 历史 · 同一条时间线上（`tools/timeline.html`）
