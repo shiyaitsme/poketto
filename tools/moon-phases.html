@@ -29,6 +29,21 @@
   .badge { top: 12px; left: 12px; }
   .hint { top: 12px; right: 12px; }
   .schematic { bottom: 10px; left: 12px; }
+  /* Ground chips sit on a sky that turns from pale day to deep night. Opaque paper keeps the Chinese sharp. */
+  .frame.ground .badge,
+  .frame.ground .hint,
+  .frame.ground .schematic {
+    background: #efeee9;
+    color: var(--ink);
+    font-family: var(--body);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    line-height: 1.45;
+    padding: 2px 8px;
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px rgba(29, 30, 27, 0.22);
+  }
   .legend { margin: 0; max-width: 70ch; }
   .bench-ctrl { display: grid; gap: 16px; min-width: 0; }
   .panel { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
@@ -376,6 +391,34 @@
     ctx.fillStyle = fill || '#1d1e1b';
     ctx.fillText(text, x, y);
   }
+  // Paper capsule + dark ink. Used on the ground sky, where a thick light stroke turns into a blur at night.
+  function chipText(ctx, text, x, y, size, color) {
+    size = size || 12;
+    ctx.save();
+    ctx.font = '700 ' + size + 'px "Noto Sans SC", "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    var tw = ctx.measureText(text).width;
+    var padX = text.length <= 2 ? 6 : 5;
+    var bw = tw + padX * 2;
+    var bh = size + 7;
+    var left = x - bw / 2, top = y - bh / 2, r = 3;
+    ctx.beginPath();
+    ctx.moveTo(left + r, top);
+    ctx.arcTo(left + bw, top, left + bw, top + bh, r);
+    ctx.arcTo(left + bw, top + bh, left, top + bh, r);
+    ctx.arcTo(left, top + bh, left, top, r);
+    ctx.arcTo(left, top, left + bw, top, r);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(239,238,233,0.96)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(29,30,27,0.28)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = color || '#1d1e1b';
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
 
   function fit(canvas) {
     var rect = canvas.getBoundingClientRect();
@@ -708,9 +751,9 @@
     var midAz = state.south ? 0 : Math.PI;
     var mid = skyPoint(midAz, 0, w, h, state.south);
     var rs = riseSet(phi);
-    haloText(ctx, '东', east.x, horizon - 18, col.ink, 13);
-    haloText(ctx, '西', west.x, horizon - 18, col.ink, 13);
-    haloText(ctx, state.south ? '北' : '南', mid.x, horizon - 18, col.ink, 13);
+    chipText(ctx, '东', east.x, horizon - 18, 13);
+    chipText(ctx, '西', west.x, horizon - 18, 13);
+    chipText(ctx, state.south ? '北' : '南', mid.x, horizon - 18, 13);
     function place(body) {
       var p = skyPoint(body.az, Math.max(body.alt, -0.35), w, h, state.south);
       var below = body.alt < -0.02;
@@ -732,15 +775,15 @@
     var sunLabelY = sp.y < horizon - 40 ? sp.y + 30 : sp.y - 34;
     var sunLabelX = sp.x;
     if (sp.y > horizon - 8) { sunLabelX = sp.x + (sp.x < w / 2 ? 46 : -46); sunLabelY = sp.y; }
-    haloText(ctx, '太阳', sunLabelX, sunLabelY, col.ink, 12);
+    chipText(ctx, '太阳', sunLabelX, sunLabelY, 12, '#8a4e0e');
     drawMoonPhase(ctx, mp.x, mp.y, mr, phi, state.south);
     ctx.strokeStyle = col.t > 0.55 ? '#1d1e1b' : 'rgba(244,241,232,.9)';
     ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.arc(mp.x, mp.y, mr, 0, Math.PI * 2); ctx.stroke();
     var moonLabelY = mp.y - mr - 18;
     if (moonLabelY < 22) moonLabelY = mp.y + mr + 14;
-    haloText(ctx, phaseInfo(phi), mp.x, moonLabelY, col.ink, 12);
-    if (moon.alt < -0.04) haloText(ctx, '在地平线下', mp.x, Math.min(h - 28, mp.y + mr + 16), col.ink, 11);
+    chipText(ctx, phaseInfo(phi), mp.x, moonLabelY, 12);
+    if (moon.alt < -0.04) chipText(ctx, '在地平线下', mp.x, Math.min(h - 28, mp.y + mr + 16), 11);
     var phi2 = phiOf(state.age + 1);
     var tom = horiz(state.hour, phi2, lat);
     if (tom.alt > 0.02) {
@@ -753,19 +796,14 @@
         var ly = mp.y + dy / dist * 10;
         ly = clamp(ly, 18, horizon - 14);
         if (Math.hypot(lx - mp.x, ly - mp.y) < mr + 24) lx = mp.x + (dx < 0 ? -1 : 1) * (mr + 42);
-        if (w > 480 && Math.hypot(lx - mp.x, ly - mp.y) > mr + 16) haloText(ctx, '明天', lx, ly, '#3d5a14', 11);
+        if (w > 480 && Math.hypot(lx - mp.x, ly - mp.y) > mr + 16) chipText(ctx, '明天', lx, ly, 11, '#245c28');
       }
     }
     function paperLabel(text, x, y) {
-      ctx.font = '700 12px "Noto Sans SC", sans-serif';
+      ctx.font = '700 12px "Noto Sans SC", "PingFang SC", sans-serif';
       var tw = ctx.measureText(text).width;
-      x = clamp(x, tw / 2 + 8, w - tw / 2 - 8);
-      ctx.fillStyle = 'rgba(239,238,233,.94)';
-      ctx.fillRect(x - tw / 2 - 5, y - 10, tw + 10, 20);
-      ctx.fillStyle = '#1d1e1b';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, x, y);
+      x = clamp(x, tw / 2 + 10, w - tw / 2 - 10);
+      chipText(ctx, text, x, y, 12);
     }
     function clearX(x) {
       var y = horizon + 36, dir = x < w / 2 ? 1 : -1, guard = 0;
