@@ -68,5 +68,11 @@ assets/           共享设计样式、纸张与笔刷效果、工具脚本
 
 ## 部署
 
-本仓库是纯静态网站，可直接用 GitHub Pages 发布：
-Settings → Pages → Source 选择 `main` 分支、根目录 `/`。
+静态页面可以由 Worker 的 assets 一起发出（见 `wrangler.jsonc`）。`tools/timeline.html` 的「我的事件」在能连上 `/api/timeline` 时存在 KV（绑定 `TIMELINE_KV`，键 `mine`）。
+
+- 浏览公开：谁都可以看内置时间线；GET `/api/timeline` 只读，有数据时也可以看已保存的事件。
+- 写入要密钥：PUT `/api/timeline` 和 POST `/api/timeline/unlock` 必须带 Worker Secret `EDIT_PASS`。密钥用 `wrangler secret put EDIT_PASS` 设在 Cloudflare 上，不要写进仓库、页面或配置。
+- 没设 secret，或密钥不对，写入都是 401。去掉整站 Access 之后也不会变成谁都能写。
+- 页面上点「解锁编辑」，密钥只记在这次浏览里（关掉页面要再解锁）。直接打开本地文件、或接口不可用时，仍只保存在这台设备的浏览器里；那种本机保存不走编辑锁，解锁也不会把它变成写入网站。只发布静态文件（例如 GitHub Pages）而没有这个 Worker 时，也是这种本机保存。
+
+仓库里没有口令，也没有 Cloudflare Access 的现状记录。Access 是否还包着整站，要到 Cloudflare 控制台确认；确认解锁和保存都正常之后，再考虑去掉 Worker 上的 Access。
