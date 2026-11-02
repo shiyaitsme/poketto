@@ -28,5 +28,11 @@
     "subject": "物理",
     "description": "拖动日落，同时观察东边天空与地球光路剖面，看地影怎样抬升、粉色暮光怎样形成。",
     "url": "tools/belt-of-venus.html"
+  },
+  {
+    "title": "月相为什么会变",
+    "subject": "天文",
+    "description": "拖动月球绕地球走，或拉动一个月和一天里的时刻：一边看日月地的位置，一边看地面上月亮的形状、高低和出没。",
+    "url": "tools/moon-phases.html"
   }
 ]
