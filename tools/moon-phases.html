@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>月相为什么会变 · Poketto</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/poketto.css">
+<style>
+  .pk-page { max-width: 1120px; }
+  .bench { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, .9fr); gap: 22px; align-items: start; }
+  .views { display: grid; gap: 16px; min-width: 0; }
+  .frame { position: relative; padding: 0; overflow: hidden; --l: 16px; height: clamp(300px, 42vh, 460px); touch-action: none; }
+  .frame.ground { height: clamp(260px, 36vh, 390px); }
+  .frame.side { height: 250px; }
+  .frame[hidden] { display: none !important; }
+  .frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .frame canvas.overlay { pointer-events: none; }
+  #space { cursor: grab; }
+  #space:active { cursor: grabbing; }
+  #ground { cursor: ew-resize; }
+  canvas:focus-visible { outline: 2px solid var(--leaf); outline-offset: -4px; }
+  .badge, .hint, .schematic {
+    position: absolute; z-index: 5; margin: 0; pointer-events: none;
+    padding: 1px 7px; background: var(--veil);
+  }
+  .badge { top: 12px; left: 12px; }
+  .hint { top: 12px; right: 12px; }
+  .schematic { bottom: 10px; left: 12px; }
+  .legend { margin: 0; max-width: 70ch; }
+  .bench-ctrl { display: grid; gap: 16px; min-width: 0; }
+  .panel { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
+  .read { display: flex; align-items: center; gap: 14px; }
+  .phase-disk { width: 84px; height: 84px; flex: none; }
+  .phase-name { font-weight: 900; font-size: clamp(32px, 4vw, 46px); line-height: 1.1; }
+  .sub { font-family: var(--mono); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; margin: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .row[hidden] { display: none !important; }
+  .lab { font-size: 13px; color: var(--ink-2); margin: 0; }
+  .lab strong { color: var(--ink); font-weight: 700; }
+  .ends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+  .notes { display: grid; gap: 12px; max-width: 720px; }
+  @media (max-width: 860px) {
+    .bench { grid-template-columns: minmax(0, 1fr); }
+    .frame { height: 300px; }
+    .frame.ground { height: 280px; }
+    .frame.side { height: 230px; }
+    .hint { display: none; }
+  }
+</style>
+<script src="../assets/poketto.js" defer></script>
+</head>
+<body>
+<main class="pk-page">
+  <div class="pk-bar">
+    <a class="pk-home" href="../index.html" data-pk-wordmark title="回到 Poketto 首页"></a>
+    <div class="pk-label"><a href="../index.html" class="pk-zh">口袋工具箱</a> / Moon &middot; <span class="pk-zh">天文</span></div>
+  </div>
+
+  <header class="pk-head">
+    <div class="pk-kicker">
+      <span class="pk-label">Tool No.06</span>
+      <span class="pk-label">Orbit &middot; Phase &middot; Sky</span>
+    </div>
+    <h1 class="pk-title">月相为什么<br>会变</h1>
+    <svg class="pk-star" viewBox="0 0 40 80" aria-hidden="true"><path d="M20 0 C21.2 26 22.5 33 40 38 C22.5 43 21.2 52 20 80 C18.8 52 17.5 43 0 38 C17.5 33 18.8 26 20 0Z"/></svg>
+    <div class="pk-br pk-lead">
+      <p class="pk-verse">月亮没有自己变圆、变缺。<br>拖动它绕地球走一圈，看亮的那一半有多少转向你；<br>再拉一天里的时刻，看它从哪边升起、升到多高。</p>
+    </div>
+  </header>
+
+  <div class="bench">
+    <div class="views">
+      <section class="frame pk-br pk-veil" id="spaceFrame" aria-label="太空俯视">
+        <canvas id="space" tabindex="0" role="img" aria-label="太空俯视示意图。可拖动月球沿轨道移动，也可用左右方向键。"></canvas>
+        <canvas id="space-ui" class="overlay" aria-hidden="true"></canvas>
+        <p class="badge pk-label" id="spaceBadge">太空俯视</p>
+        <p class="hint pk-label">拖动月球</p>
+        <p class="schematic pk-label">示意图，非真实比例</p>
+      </section>
+
+      <section class="frame ground pk-br pk-veil" id="groundFrame" aria-label="地面仰望">
+        <canvas id="ground" tabindex="0" role="img" aria-label="地面看到的天空。左右拖动或按左右方向键，改变这一天的时刻。"></canvas>
+        <p class="badge pk-label" id="groundBadge">地面</p>
+        <p class="hint pk-label">左右拖动这一天</p>
+        <p class="schematic pk-label">示意图，非真实比例</p>
+      </section>
+
+      <section class="frame side pk-br pk-veil" id="sideFrame" hidden aria-label="侧面剖面">
+        <canvas id="side" role="img" aria-label="侧面示意图：月球轨道相对黄道倾斜约 5.1 度，用来看日食和月食为什么不是每个月都有。"></canvas>
+        <p class="badge pk-label">侧面 · 为什么不是每个月都有食</p>
+        <p class="schematic pk-label">上下距离放大了 4 倍</p>
+      </section>
+
+      <p class="legend pk-note">红点是站在地球上的你。俯视图从北极一侧往下看，阳光从左边来，月球始终一半亮、一半暗。地面上的圆缺，取决于亮的那一半有多少转向地球。</p>
+    </div>
+
+    <div class="bench-ctrl">
+      <section class="panel pk-br pk-veil" aria-label="当前月相">
+        <div class="pk-h2"><small>Phase</small>现在看到的月亮</div>
+        <div class="read">
+          <canvas class="phase-disk" id="phaseDisk" aria-hidden="true"></canvas>
+          <div>
+            <div class="phase-name" id="phaseName" aria-live="polite">上弦月</div>
+            <p class="sub" id="ageText">月龄 7.4 天</p>
+          </div>
+        </div>
+        <p class="lab" id="limbText"></p>
+        <p class="lab" id="skyText"></p>
+        <p class="lab" id="riseText"></p>
+        <p class="lab" id="lagText"></p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="朔望月">
+        <div class="row" style="justify-content:space-between">
+          <div class="pk-h2"><small>Month</small>一个月里的日子</div>
+          <span class="lab" id="ageLab"></span>
+        </div>
+        <input class="pk-range" type="range" id="age" min="0" max="29.53" step="0.01" value="7.38" aria-label="月龄，从新月起算的天数">
+        <div class="ends"><span>0 天 · 新月</span><span>29.53 天</span></div>
+        <div class="row" id="phaseChips" role="group" aria-label="跳到某个月相">
+          <button class="pk-chip zh" type="button" data-deg="0">新月</button>
+          <button class="pk-chip zh" type="button" data-deg="45">娥眉月</button>
+          <button class="pk-chip zh" type="button" data-deg="90" aria-pressed="true">上弦月</button>
+          <button class="pk-chip zh" type="button" data-deg="135">盈凸月</button>
+          <button class="pk-chip zh" type="button" data-deg="180">满月</button>
+          <button class="pk-chip zh" type="button" data-deg="225">亏凸月</button>
+          <button class="pk-chip zh" type="button" data-deg="270">下弦月</button>
+          <button class="pk-chip zh" type="button" data-deg="315">残月</button>
+        </div>
+        <div class="row">
+          <button class="pk-chip zh" type="button" id="playMonth" aria-pressed="false">播放一个月</button>
+        </div>
+        <p class="lab">这是相对太阳的一圈，叫朔望月，这里取 29.53 天。拖俯视图里的月球，滑条会跟着走。</p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="一天里的时刻">
+        <div class="row" style="justify-content:space-between">
+          <div class="pk-h2"><small>Day</small>一天里的时刻</div>
+          <span class="lab" id="hourLab"></span>
+        </div>
+        <input class="pk-range" type="range" id="hour" min="0" max="24" step="0.01" value="18" aria-label="当地太阳时">
+        <div class="ends"><span>0:00</span><span>12:00 太阳最高</span><span>24:00</span></div>
+        <div class="row">
+          <button class="pk-chip" type="button" data-hour="0">0:00</button>
+          <button class="pk-chip" type="button" data-hour="6">6:00</button>
+          <button class="pk-chip" type="button" data-hour="12">12:00</button>
+          <button class="pk-chip" type="button" data-hour="18">18:00</button>
+          <button class="pk-chip zh" type="button" id="playDay" aria-pressed="false">播放这一天</button>
+        </div>
+        <p class="lab">时刻是当地太阳时：12:00 就是太阳升到最高的时候，不是手表上的北京时间。拉动它，地球上的红点会转，地面上的太阳和月亮一起移动。</p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="半球与交角">
+        <div class="pk-h2"><small>Look closer</small>再看两个开关</div>
+        <div class="row" role="group" aria-label="南北半球">
+          <button class="pk-chip zh" type="button" id="hemN" aria-pressed="true">北半球</button>
+          <button class="pk-chip zh" type="button" id="hemS" aria-pressed="false">南半球</button>
+        </div>
+        <label class="pk-check"><input type="checkbox" id="tilt">画出黄白交角（约 5.1°）和食的示意</label>
+        <div class="row" id="nodeRow" hidden role="group" aria-label="交点朝向">
+          <button class="pk-chip zh" type="button" data-node="90" aria-pressed="true">平常月份</button>
+          <button class="pk-chip zh" type="button" data-node="0" aria-pressed="false">食季</button>
+        </div>
+        <p class="lab" id="eclipseNote"></p>
+      </section>
+    </div>
+  </div>
+
+  <section class="notes">
+    <div class="pk-h2"><small>How to read</small>怎么读这两张图</div>
+    <p class="pk-note"><b>月相看的是亮面朝哪。</b>太阳只照亮月球的一半。俯视图里这一半永远朝向太阳（图的左边）。你站在地球上，有时看见的几乎全是亮面，那是满月；有时只看见一条边，那是娥眉月或残月；正好一半，就是上弦或下弦。</p>
+    <p class="pk-note"><b>红点是你。</b>一天之中，地球自西向东转，从北极上方看是逆时针，红点就跟着转。红点正对着月球时，月球在你的天空里升到最高；红点和月球差开大约四分之一圈时，月球在地平线上，不是月出就是月落。</p>
+    <p class="pk-note"><b>北半球面朝南，南半球面朝北。</b>这个简化模型里月亮最高出现在正南（北半球）或正北（南半球），所以地面图朝那边看。北半球上弦月亮边在右，像字母 D；南半球左右对调，亮边在左。天空图上的「明天这时」是同一钟点、再过一天的位置：月亮每天往东错开一截。</p>
+    <p class="pk-note"><b>月出一天比一天晚。</b>月球相对太阳每天向东走一截，一圈用 29.53 天，所以月出、中天、月落每天大约晚 49 分钟。口头常说的「大约 50 分钟」就是这个粗数。右侧会按当前月相算出明天的月出。</p>
+    <p class="pk-note"><b>不是每个月都有食。</b>月球绕地球的平面，相对太阳走的那张平面（黄道）歪了大约 5.1°，这叫黄白交角。新月、满月只有刚好贴着黄道时，影子才对得上。打开开关，比较「平常月份」和「食季」。侧面图把上下距离放大了 4 倍，角度数字没有放大。</p>
+  </section>
+
+  <section class="notes">
+    <div class="pk-h2"><small>The model</small>关于这个模型</div>
+    <p class="pk-note">这是一张教学示意图，不是星历，也不能用来预报某地某天的月出或日食月食。<b>太阳、地球、月球的大小和距离都不是真实比例。</b>地面图里太阳和月亮画得差不多大，这一点接近看上去的角度（都大约半度）；轨道和距离则完全是为了看得清。</p>
+    <p class="pk-note">朔望月取 29.53 天（平均值通常就写成约 29.53 日），月球在图上匀速走正圆。黄白交角取约 5.1°（常引用的平均值约 5.145°）。「食季」把轨道交点转到正对太阳，「平常月份」把交点偏开 90°，用来对照两种典型情况，不是某一年里真实的月份。文案里「月影大致朝向地球」只在这个简化角度不到约 1°、并且月相名为新月或满月时出现，用来形容贴得很近，不是食的判定，也没有计算本影和半影。</p>
+    <p class="pk-note">地面图把太阳和月亮都放在天赤道上（赤纬取 0°），纬度固定在北纬或南纬 40°。因此月出月落在正东、正西，昼夜各约 12 小时，月亮最高大约 50°。真实月亮的赤纬会变化，出没会偏南或偏北，升到多高也会变，这里没有算。时刻是当地太阳时。没有计算大气折射、视差，也没有把地球在一个月里绕太阳的移动单独画出来——29.53 天已经是相对太阳的平均周期。</p>
+    <p class="pk-note">月相名称按角度分成八段，方便和画面对照。段与段之间的界线是为了教学，不是天文台的规定。娥眉月、残月也有人写成蛾眉月、残月，页面用的是「娥眉月 / 残月」。太空俯视优先用本机 WebGL 画带明暗的球体；打不开时自动改成同一张平面图。地址栏加上 <span class="sub">?webgl=0</span> 可以强制用平面图。</p>
+    <p class="pk-note" id="check" hidden></p>
+  </section>
+
+  <footer class="pk-foot">
+    <a class="pk-back pk-label" href="../index.html">
+      <svg viewBox="0 0 34 10" aria-hidden="true"><path d="M34 5 H2 M7 1 L2 5 L7 9" fill="none" stroke="#1d1e1b" stroke-width="1.4"/></svg>
+      回到口袋 <span class="zh">/ Back to the pocket</span>
+    </a>
+    <span class="pk-label">Poketto &middot; Made with curiosity</span>
+  </footer>
+</main>
+<script>
+(function () {
+  'use strict';
+  var SYNODIC = 29.53;
+  var INC = 5.1 * Math.PI / 180;
+  var LAT = 40 * Math.PI / 180;
+  var EXAG = 4;
+  var EARTH_R = 0.62;
+  var ORBIT = 2.35;
+  var MOON_R = 0.22;
+  var SUN = { x: -4.75, y: 0, r: 0.58 };
+  var DEG = Math.PI / 180;
+
+  var params = new URLSearchParams(location.search);
+  var state = {
+    age: params.has('age') ? parseFloat(params.get('age')) : SYNODIC / 4,
+    hour: params.has('hour') ? parseFloat(params.get('hour')) : 18,
+    south: params.get('south') === '1',
+    tilt: params.get('tilt') === '1',
+    node: params.has('node') ? parseFloat(params.get('node')) : 90,
+    playMonth: false,
+    playDay: false
+  };
+  var force2d = params.get('webgl') === '0';
+  var lastT = 0;
+  var raf = 0;
+  var view = { l: -5, r: 3, b: -3, t: 3 };
+  var glPack = null;
+
+  function $(id) { return document.getElementById(id); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function wrap24(h) { h = h % 24; if (h < 0) h += 24; return h; }
+  function wrapAge(a) { a = a % SYNODIC; if (a < 0) a += SYNODIC; return a; }
+  function wrapPi(a) {
+    var t = Math.PI * 2;
+    a = a % t; if (a > Math.PI) a -= t; if (a < -Math.PI) a += t; return a;
+  }
+  function phiOf(age) { return wrapAge(age) / SYNODIC * Math.PI * 2; }
+  function fmtTime(h) {
+    h = wrap24(h);
+    var total = Math.round(h * 60) % (24 * 60);
+    var hh = Math.floor(total / 60), mm = total % 60;
+    return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+  function riseSet(phi) {
+    var shift = (phi / DEG) / 15;
+    return { rise: wrap24(6 + shift), transit: wrap24(12 + shift), set: wrap24(18 + shift) };
+  }
+  function phaseInfo(phi) {
+    var d = phi / DEG;
+    d = d % 360; if (d < 0) d += 360;
+    if (d < 10 || d >= 350) return '新月';
+    if (d < 80) return '娥眉月';
+    if (d < 100) return '上弦月';
+    if (d < 170) return '盈凸月';
+    if (d < 190) return '满月';
+    if (d < 260) return '亏凸月';
+    if (d < 280) return '下弦月';
+    return '残月';
+  }
+  function moonPos(phi, tilted, nodeDeg) {
+    var x = -Math.cos(phi), y = -Math.sin(phi), z = 0;
+    if (!tilted) return [x, y, z];
+    var Om = nodeDeg * DEG;
+    var nx = -Math.cos(Om), ny = -Math.sin(Om), nz = 0;
+    var c = Math.cos(INC), s = Math.sin(INC), oc = 1 - c;
+    var cx = ny * z - nz * y, cy = nz * x - nx * z, cz = nx * y - ny * x;
+    var dot = nx * x + ny * y + nz * z;
+    return [x * c + cx * s + nx * dot * oc, y * c + cy * s + ny * dot * oc, z * c + cz * s + nz * dot * oc];
+  }
+  function betaDeg(phi, nodeDeg) {
+    var p = moonPos(phi, true, nodeDeg);
+    return Math.asin(clamp(p[2], -1, 1)) / DEG;
+  }
+  function observerAngle(hour) { return Math.PI + (hour - 12) * Math.PI / 12; }
+  function horiz(hour, phi, lat) {
+    var H = (hour - 12) * Math.PI / 12 - phi;
+    var alt = Math.asin(clamp(Math.cos(lat) * Math.cos(H), -1, 1));
+    var cosAlt = Math.cos(alt) || 1e-6;
+    var sinAz = -Math.sin(H) / cosAlt;
+    var cosAz = (-Math.cos(H) * Math.sin(lat)) / cosAlt;
+    var az = Math.atan2(sinAz, cosAz);
+    if (az < 0) az += Math.PI * 2;
+    return { alt: alt, az: az, H: wrapPi(H) };
+  }
+  function azName(az) {
+    var names = ['正北', '东北', '正东', '东南', '正南', '西南', '正西', '西北'];
+    var i = Math.round((az / DEG) / 45) % 8;
+    if (i < 0) i += 8;
+    return names[i];
+  }
+  function litAmount(phi, south, nx) {
+    var sunRight = Math.sin(phi) * (south ? -1 : 1);
+    var sunFront = -Math.cos(phi);
+    var nz = Math.sqrt(Math.max(0, 1 - nx * nx));
+    return nx * sunRight + nz * sunFront;
+  }
+
+  function selfCheck() {
+    var errs = [];
+    function near(a, b, eps, msg) { if (Math.abs(a - b) > eps) errs.push(msg + ' got ' + a); }
+    var rs = riseSet(0);
+    near(rs.rise, 6, 0.02, 'new rise'); near(rs.set, 18, 0.02, 'new set'); near(rs.transit, 12, 0.02, 'new transit');
+    rs = riseSet(Math.PI / 2);
+    near(rs.rise, 12, 0.02, 'fq rise'); near(rs.transit, 18, 0.02, 'fq transit'); near(rs.set, 0, 0.02, 'fq set');
+    rs = riseSet(Math.PI);
+    near(rs.rise, 18, 0.02, 'full rise'); near(rs.transit, 0, 0.02, 'full transit'); near(rs.set, 6, 0.02, 'full set');
+    rs = riseSet(Math.PI * 1.5);
+    near(rs.rise, 0, 0.02, 'lq rise'); near(rs.transit, 6, 0.02, 'lq transit'); near(rs.set, 12, 0.02, 'lq set');
+    near(24 * 60 / SYNODIC, 48.76, 0.05, 'lag');
+    if (phaseInfo(0) !== '新月' || phaseInfo(Math.PI / 2) !== '上弦月' || phaseInfo(Math.PI) !== '满月' || phaseInfo(Math.PI * 1.5) !== '下弦月') errs.push('names');
+    if (phaseInfo(Math.PI / 6) !== '娥眉月' || phaseInfo(Math.PI * 2 / 3) !== '盈凸月' || phaseInfo(Math.PI * 4 / 3) !== '亏凸月' || phaseInfo(Math.PI * 5 / 3) !== '残月') errs.push('crescent names');
+    near((1 - Math.cos(0)) / 2, 0, 1e-6, 'k0');
+    near((1 - Math.cos(Math.PI / 2)) / 2, 0.5, 1e-6, 'k1');
+    near((1 - Math.cos(Math.PI)) / 2, 1, 1e-6, 'k2');
+    near(betaDeg(0, 0), 0, 0.02, 'beta new season');
+    near(betaDeg(Math.PI, 0), 0, 0.02, 'beta full season');
+    near(betaDeg(0, 90), -5.1, 0.05, 'beta new ordinary');
+    near(betaDeg(Math.PI, 90), 5.1, 0.05, 'beta full ordinary');
+    var p = moonPos(Math.PI / 2, false, 0);
+    near(p[0], 0, 1e-6, 'fq x'); near(p[1], -1, 1e-6, 'fq y');
+    var h = horiz(18, Math.PI / 2, LAT);
+    near(h.alt / DEG, 50, 0.2, 'fq sunset alt'); near(h.az / DEG, 180, 0.5, 'fq sunset az');
+    h = horiz(12, Math.PI / 2, LAT);
+    near(h.alt / DEG, 0, 0.2, 'fq noon alt');
+    h = horiz(18, Math.PI, LAT);
+    near(h.alt / DEG, 0, 0.2, 'full sunset alt'); near(h.az / DEG, 90, 0.5, 'full sunset az');
+    h = horiz(0, Math.PI, LAT);
+    near(h.alt / DEG, 50, 0.2, 'full midnight alt');
+    h = horiz(18, Math.PI / 2, -LAT);
+    near(h.az / DEG, 0, 0.5, 'sh culmination north');
+    if (!(litAmount(Math.PI / 2, false, 0.6) > 0 && litAmount(Math.PI / 2, false, -0.6) < 0)) errs.push('nh quarter');
+    if (!(litAmount(Math.PI / 2, true, -0.6) > 0 && litAmount(Math.PI / 2, true, 0.6) < 0)) errs.push('sh quarter');
+    if (!(litAmount(0, false, 0) < 0 && litAmount(Math.PI, false, 0) > 0)) errs.push('new full');
+    if (!(litAmount(Math.PI / 6, false, 0.95) > 0 && litAmount(Math.PI / 6, false, 0) < 0)) errs.push('crescent');
+    return errs;
+  }
+
+  var disk = document.createElement('canvas');
+  function drawMoonPhase(ctx, x, y, r, phi, south) {
+    var ratio = 2;
+    var d = Math.max(2, Math.ceil(r * 2 * ratio));
+    if (disk.width !== d) { disk.width = d; disk.height = d; }
+    var g = disk.getContext('2d');
+    var img = g.createImageData(d, d);
+    var data = img.data;
+    var sunRight = Math.sin(phi) * (south ? -1 : 1);
+    var sunFront = -Math.cos(phi);
+    var cx = d / 2, cy = d / 2, rad = d / 2;
+    for (var py = 0; py < d; py++) {
+      var ny = (cy - (py + 0.5)) / rad;
+      for (var px = 0; px < d; px++) {
+        var nx = (px + 0.5 - cx) / rad;
+        var rr = nx * nx + ny * ny;
+        var i = (py * d + px) * 4;
+        if (rr > 1) { data[i + 3] = 0; continue; }
+        var nz = Math.sqrt(1 - rr);
+        var light = nx * sunRight + nz * sunFront;
+        var t = light * 10 + 0.5;
+        if (t < 0) t = 0; else if (t > 1) t = 1;
+        var edge = clamp((1 - Math.sqrt(rr)) * rad, 0, 1);
+        data[i] = 34 + (246 - 34) * t;
+        data[i + 1] = 36 + (240 - 36) * t;
+        data[i + 2] = 32 + (224 - 32) * t;
+        data[i + 3] = Math.round(edge * 255);
+      }
+    }
+    g.putImageData(img, 0, 0);
+    ctx.drawImage(disk, x - r, y - r, r * 2, r * 2);
+  }
+
+  function haloText(ctx, text, x, y, fill, size) {
+    ctx.font = '700 ' + (size || 12) + 'px "Noto Sans SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = 'rgba(239,238,233,.88)';
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = fill || '#1d1e1b';
+    ctx.fillText(text, x, y);
+  }
+
+  function fit(canvas) {
+    var rect = canvas.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = Math.max(2, Math.round(rect.width * dpr));
+    var h = Math.max(2, Math.round(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    return { cssW: rect.width, cssH: rect.height, dpr: dpr };
+  }
+  function ctx2d(canvas, box) {
+    var c = canvas.getContext('2d');
+    c.setTransform(box.dpr, 0, 0, box.dpr, 0, 0);
+    c.clearRect(0, 0, box.cssW, box.cssH);
+    return c;
+  }
+
+  function computeView(w, h) {
+    var minW = 8.8, minH = 6.3, cx = -1.15, cy = 0;
+    var aspect = w / Math.max(1, h);
+    var halfH = minH / 2, halfW = halfH * aspect;
+    if (halfW < minW / 2) { halfW = minW / 2; halfH = halfW / aspect; }
+    return { l: cx - halfW, r: cx + halfW, b: cy - halfH, t: cy + halfH };
+  }
+  function worldToScreen(x, y, box) {
+    return [
+      (x - view.l) / (view.r - view.l) * box.cssW,
+      (view.t - y) / (view.t - view.b) * box.cssH
+    ];
+  }
+
+  function compile(gl, type, src) {
+    var sh = gl.createShader(type);
+    gl.shaderSource(sh, src);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(sh));
+      gl.deleteShader(sh);
+      return null;
+    }
+    return sh;
+  }
+  function program(gl, vs, fs) {
+    var a = compile(gl, gl.VERTEX_SHADER, vs), b = compile(gl, gl.FRAGMENT_SHADER, fs);
+    if (!a || !b) return null;
+    var p = gl.createProgram();
+    gl.attachShader(p, a); gl.attachShader(p, b);
+    gl.bindAttribLocation(p, 0, 'aPos');
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(p)); return null; }
+    return p;
+  }
+  function sphereMesh(stacks, slices) {
+    var pos = [], idx = [];
+    for (var i = 0; i <= stacks; i++) {
+      var phi = i / stacks * Math.PI, sp = Math.sin(phi), cp = Math.cos(phi);
+      for (var j = 0; j <= slices; j++) {
+        var th = j / slices * Math.PI * 2;
+        pos.push(sp * Math.cos(th), cp, sp * Math.sin(th));
+      }
+    }
+    for (var a = 0; a < stacks; a++) {
+      for (var b = 0; b < slices; b++) {
+        var p = a * (slices + 1) + b, q = p + slices + 1;
+        idx.push(p, q, p + 1, q, q + 1, p + 1);
+      }
+    }
+    return { pos: new Float32Array(pos), idx: new Uint16Array(idx) };
+  }
+  function ortho(l, r, b, t, n, f) {
+    var m = new Float32Array(16);
+    m[0] = 2 / (r - l); m[5] = 2 / (t - b); m[10] = -2 / (f - n);
+    m[12] = -(r + l) / (r - l); m[13] = -(t + b) / (t - b); m[14] = -(f + n) / (f - n); m[15] = 1;
+    return m;
+  }
+  function mul(a, b) {
+    var o = new Float32Array(16);
+    for (var c = 0; c < 4; c++) {
+      for (var r = 0; r < 4; r++) {
+        o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+      }
+    }
+    return o;
+  }
+  function modelOf(x, y, z, s) {
+    var m = new Float32Array(16);
+    m[0] = s; m[5] = s; m[10] = s; m[15] = 1;
+    m[12] = x; m[13] = y; m[14] = z;
+    return m;
+  }
+
+  function initGL(canvas) {
+    if (force2d) return null;
+    var gl = null;
+    try { gl = canvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: false }); } catch (e) { gl = null; }
+    if (!gl) return null;
+    var vs = 'attribute vec3 aPos; uniform mat4 uMvp; varying vec3 vPos; void main(){ vPos = aPos; gl_Position = uMvp * vec4(aPos, 1.0); }';
+    var fsSphere = 'precision mediump float; varying vec3 vPos; uniform vec3 uLight; uniform vec3 uColor; uniform float uAmbient; uniform float uEmissive; void main(){ if(uEmissive>0.5){ gl_FragColor=vec4(uColor,1.0); return; } vec3 n=normalize(vPos); float ndl=max(0.0, dot(n, normalize(uLight))); vec3 col=uColor*(uAmbient+(1.0-uAmbient)*ndl); gl_FragColor=vec4(col,1.0); }';
+    var fsLine = 'precision mediump float; uniform vec4 uColor; void main(){ gl_FragColor=uColor; }';
+    var ps = program(gl, vs, fsSphere), pl = program(gl, vs, fsLine);
+    if (!ps || !pl) return null;
+    var mesh = sphereMesh(28, 40);
+    var vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, mesh.pos, gl.STATIC_DRAW);
+    var ibo = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.idx, gl.STATIC_DRAW);
+    var lines = gl.createBuffer();
+    return { gl: gl, ps: ps, pl: pl, mesh: mesh, vbo: vbo, ibo: ibo, lines: lines };
+  }
+
+  function drawLines(pack, proj, data, color) {
+    var gl = pack.gl;
+    gl.useProgram(pack.pl);
+    gl.uniformMatrix4fv(gl.getUniformLocation(pack.pl, 'uMvp'), false, proj);
+    gl.uniform4fv(gl.getUniformLocation(pack.pl, 'uColor'), color);
+    gl.bindBuffer(gl.ARRAY_BUFFER, pack.lines);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.LINES, 0, data.length / 3);
+  }
+  function drawSphere(pack, proj, x, y, z, radius, color, ambient, emissive) {
+    var gl = pack.gl;
+    var mvp = mul(proj, modelOf(x, y, z, radius));
+    gl.useProgram(pack.ps);
+    gl.uniformMatrix4fv(gl.getUniformLocation(pack.ps, 'uMvp'), false, mvp);
+    gl.uniform3f(gl.getUniformLocation(pack.ps, 'uLight'), -1, 0, 0);
+    gl.uniform3fv(gl.getUniformLocation(pack.ps, 'uColor'), color);
+    gl.uniform1f(gl.getUniformLocation(pack.ps, 'uAmbient'), ambient);
+    gl.uniform1f(gl.getUniformLocation(pack.ps, 'uEmissive'), emissive);
+    gl.bindBuffer(gl.ARRAY_BUFFER, pack.vbo);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, pack.ibo);
+    gl.drawElements(gl.TRIANGLES, pack.mesh.idx.length, gl.UNSIGNED_SHORT, 0);
+  }
+
+  function orbitLine(tilted) {
+    var n = 96, data = new Float32Array(n * 6);
+    for (var i = 0; i < n; i++) {
+      var a = moonPos(i / n * Math.PI * 2, tilted, state.node);
+      var b = moonPos((i + 1) / n * Math.PI * 2, tilted, state.node);
+      data[i * 6] = a[0] * ORBIT; data[i * 6 + 1] = a[1] * ORBIT; data[i * 6 + 2] = a[2] * ORBIT;
+      data[i * 6 + 3] = b[0] * ORBIT; data[i * 6 + 4] = b[1] * ORBIT; data[i * 6 + 5] = b[2] * ORBIT;
+    }
+    return data;
+  }
+
+  function drawSpaceGL(pack, box) {
+    var gl = pack.gl;
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    var proj = ortho(view.l, view.r, view.b, view.t, -8, 8);
+    var rays = [];
+    for (var k = -3; k <= 3; k++) {
+      var yy = k * 0.34;
+      rays.push(SUN.x + SUN.r * 0.8, yy, 0, -EARTH_R - 0.05, yy, 0);
+    }
+    drawLines(pack, proj, new Float32Array(rays), [0.898, 0.541, 0.122, 0.45]);
+    if (state.tilt) {
+      var node = moonPos(state.node * DEG, false, 0);
+      drawLines(pack, proj, new Float32Array([
+        -node[0] * ORBIT * 1.12, -node[1] * ORBIT * 1.12, 0,
+        node[0] * ORBIT * 1.12, node[1] * ORBIT * 1.12, 0
+      ]), [0.373, 0.682, 0.353, 0.95]);
+    }
+    drawLines(pack, proj, orbitLine(state.tilt), [0.114, 0.118, 0.106, 0.82]);
+    var phi = phiOf(state.age);
+    var mp = moonPos(phi, state.tilt, state.node);
+    drawLines(pack, proj, new Float32Array([0, 0, 0, mp[0] * ORBIT, mp[1] * ORBIT, mp[2] * ORBIT]), [0.114, 0.118, 0.106, 0.28]);
+    drawSphere(pack, proj, SUN.x, SUN.y, 0, SUN.r, [0.98, 0.74, 0.32], 0, 1);
+    drawSphere(pack, proj, 0, 0, 0, EARTH_R, [0.34, 0.55, 0.60], 0.16, 0);
+    drawSphere(pack, proj, mp[0] * ORBIT, mp[1] * ORBIT, mp[2] * ORBIT, MOON_R, [0.94, 0.91, 0.84], 0.12, 0);
+  }
+
+  function drawSpace2D(ctx, box) {
+    var w = box.cssW, h = box.cssH;
+    function P(x, y) { return worldToScreen(x, y, box); }
+    ctx.save();
+    ctx.strokeStyle = 'rgba(229,138,31,.55)';
+    ctx.lineWidth = 1.25;
+    for (var k = -3; k <= 3; k++) {
+      var a = P(SUN.x + 0.5, k * 0.34), b = P(-EARTH_R - 0.05, k * 0.34);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    }
+    var sun = P(SUN.x, SUN.y), sunR = (SUN.r / (view.r - view.l)) * w;
+    var g = ctx.createRadialGradient(sun[0], sun[1], sunR * 0.2, sun[0], sun[1], sunR * 2.1);
+    g.addColorStop(0, '#fff6d8'); g.addColorStop(0.35, '#f0b14a'); g.addColorStop(1, 'rgba(229,138,31,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(sun[0], sun[1], sunR * 2.1, 0, Math.PI * 2); ctx.fill();
+    if (state.tilt) {
+      var node = moonPos(state.node * DEG, false, 0);
+      var n1 = P(-node[0] * ORBIT * 1.12, -node[1] * ORBIT * 1.12);
+      var n2 = P(node[0] * ORBIT * 1.12, node[1] * ORBIT * 1.12);
+      ctx.strokeStyle = '#5fae5a'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(n1[0], n1[1]); ctx.lineTo(n2[0], n2[1]); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.strokeStyle = 'rgba(29,30,27,.82)'; ctx.lineWidth = 1.35;
+    ctx.beginPath();
+    for (var i = 0; i <= 120; i++) {
+      var p = moonPos(i / 120 * Math.PI * 2, state.tilt, state.node);
+      var s = P(p[0] * ORBIT, p[1] * ORBIT);
+      if (i === 0) ctx.moveTo(s[0], s[1]); else ctx.lineTo(s[0], s[1]);
+    }
+    ctx.closePath(); ctx.stroke();
+    var phi = phiOf(state.age);
+    var mp = moonPos(phi, state.tilt, state.node);
+    var e = P(0, 0), m = P(mp[0] * ORBIT, mp[1] * ORBIT);
+    ctx.strokeStyle = 'rgba(29,30,27,.28)';
+    ctx.beginPath(); ctx.moveTo(e[0], e[1]); ctx.lineTo(m[0], m[1]); ctx.stroke();
+    var er = (EARTH_R / (view.r - view.l)) * w;
+    var grd = ctx.createLinearGradient(e[0] - er, 0, e[0] + er, 0);
+    grd.addColorStop(0, '#f3e7c2'); grd.addColorStop(0.42, '#6f9eab'); grd.addColorStop(0.52, '#24343c'); grd.addColorStop(1, '#15191c');
+    ctx.beginPath(); ctx.arc(e[0], e[1], er, 0, Math.PI * 2); ctx.fillStyle = grd; ctx.fill();
+    var mr = (MOON_R / (view.r - view.l)) * w;
+    var mg = ctx.createLinearGradient(m[0] - mr, 0, m[0] + mr, 0);
+    mg.addColorStop(0, '#f7f4ea'); mg.addColorStop(0.42, '#d9d3c4'); mg.addColorStop(0.55, '#3a3d38'); mg.addColorStop(1, '#222420');
+    ctx.beginPath(); ctx.arc(m[0], m[1], mr, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill();
+    ctx.restore();
+  }
+
+  function drawSpaceOverlay(ctx, box) {
+    var w = box.cssW;
+    function P(x, y) { return worldToScreen(x, y, box); }
+    var earth = P(0, 0);
+    var er = (EARTH_R / (view.r - view.l)) * w;
+    ctx.strokeStyle = '#1d1e1b'; ctx.lineWidth = 1.25;
+    ctx.beginPath(); ctx.arc(earth[0], earth[1], er, 0, Math.PI * 2); ctx.stroke();
+    var phi = phiOf(state.age);
+    var mp = moonPos(phi, state.tilt, state.node);
+    var moon = P(mp[0] * ORBIT, mp[1] * ORBIT);
+    var mr = (MOON_R / (view.r - view.l)) * w;
+    ctx.beginPath(); ctx.arc(moon[0], moon[1], mr, 0, Math.PI * 2); ctx.stroke();
+    var th = observerAngle(state.hour);
+    var ox = Math.cos(th) * EARTH_R, oy = Math.sin(th) * EARTH_R;
+    var o = P(ox, oy);
+    var out = P(Math.cos(th) * (EARTH_R + 0.34), Math.sin(th) * (EARTH_R + 0.34));
+    ctx.strokeStyle = '#d4402a'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(out[0], out[1]); ctx.stroke();
+    ctx.fillStyle = '#d4402a';
+    ctx.beginPath(); ctx.arc(o[0], o[1], 5.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#1d1e1b'; ctx.lineWidth = 1.2; ctx.stroke();
+    haloText(ctx, '你', out[0], out[1], '#d4402a', 12);
+    var stations = [['新月', 0], ['上弦', Math.PI / 2], ['满月', Math.PI], ['下弦', Math.PI * 1.5]];
+    stations.forEach(function (s) {
+      var q = moonPos(s[1], false, 0);
+      var at = P(q[0] * (ORBIT + 0.72), q[1] * (ORBIT + 0.72));
+      haloText(ctx, s[0], at[0], at[1], '#1d1e1b', 12);
+    });
+    var a0 = moonPos(0.62, false, 0), a1 = moonPos(0.92, false, 0);
+    var A = P(a0[0] * ORBIT, a0[1] * ORBIT), B = P(a1[0] * ORBIT, a1[1] * ORBIT);
+    ctx.strokeStyle = '#1d1e1b'; ctx.fillStyle = '#1d1e1b'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
+    var ang = Math.atan2(B[1] - A[1], B[0] - A[0]);
+    ctx.beginPath();
+    ctx.moveTo(B[0], B[1]);
+    ctx.lineTo(B[0] - 9 * Math.cos(ang - 0.4), B[1] - 9 * Math.sin(ang - 0.4));
+    ctx.lineTo(B[0] - 9 * Math.cos(ang + 0.4), B[1] - 9 * Math.sin(ang + 0.4));
+    ctx.closePath(); ctx.fill();
+    var sun = P(SUN.x, SUN.y);
+    haloText(ctx, '太阳', sun[0], sun[1] - ((SUN.r / (view.r - view.l)) * w) - 14, '#9a5a12', 12);
+    haloText(ctx, '阳光 →', (sun[0] + earth[0]) / 2, earth[1] - 28, '#9a5a12', 12);
+    if (state.tilt) {
+      var node = moonPos(state.node * DEG, false, 0);
+      var nl = P(node[0] * ORBIT * 1.18, node[1] * ORBIT * 1.18);
+      haloText(ctx, '交点', nl[0], nl[1], '#2f7a3a', 12);
+    }
+  }
+
+  function skyPoint(az, alt, w, h, south) {
+    var facing = south ? 0 : Math.PI;
+    var delta = wrapPi(az - facing);
+    var x = w * 0.5 + (delta / (Math.PI / 2)) * (w * 0.36);
+    var horizon = h * 0.68;
+    var y = horizon - (alt / (Math.PI / 2)) * (h * 0.50);
+    return { x: x, y: y, horizon: horizon, front: Math.abs(delta) <= Math.PI / 2 + 0.08 };
+  }
+  function skyColors(sunAlt) {
+    var t = clamp((sunAlt + 0.14) / 0.42, 0, 1);
+    function mix(a, b) { return Math.round(a + (b - a) * t); }
+    function rgb(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
+    return {
+      top: rgb([mix(16, 176), mix(22, 198), mix(36, 216)]),
+      hor: rgb([mix(38, 236), mix(48, 214), mix(70, 176)]),
+      ground: rgb([mix(24, 124), mix(26, 122), mix(22, 96)]),
+      ink: t > 0.55 ? '#1d1e1b' : '#f4f1e8',
+      t: t
+    };
+  }
+
+  function drawGround(ctx, box) {
+    var w = box.cssW, h = box.cssH;
+    var lat = state.south ? -LAT : LAT;
+    var phi = phiOf(state.age);
+    var sun = horiz(state.hour, 0, lat);
+    var moon = horiz(state.hour, phi, lat);
+    var col = skyColors(sun.alt);
+    var horizon = h * 0.68;
+    var g = ctx.createLinearGradient(0, 0, 0, horizon);
+    g.addColorStop(0, col.top); g.addColorStop(1, col.hor);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+    ctx.fillStyle = col.ground; ctx.fillRect(0, horizon, w, h - horizon);
+    ctx.strokeStyle = col.t > 0.5 ? 'rgba(29,30,27,.65)' : 'rgba(239,238,233,.8)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(0, horizon); ctx.lineTo(w, horizon); ctx.stroke();
+    ctx.setLineDash([3, 5]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(w / 2, horizon - 8); ctx.lineTo(w / 2, h * 0.16); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    var started = false;
+    for (var i = 0; i <= 48; i++) {
+      var H = -Math.PI / 2 + (i / 48) * Math.PI;
+      var alt = Math.asin(clamp(Math.cos(lat) * Math.cos(H), -1, 1));
+      var sinAz = -Math.sin(H) / (Math.cos(alt) || 1);
+      var cosAz = (-Math.cos(H) * Math.sin(lat)) / (Math.cos(alt) || 1);
+      var az = Math.atan2(sinAz, cosAz); if (az < 0) az += Math.PI * 2;
+      var p = skyPoint(az, alt, w, h, state.south);
+      if (!started) { ctx.moveTo(p.x, p.y); started = true; } else ctx.lineTo(p.x, p.y);
+    }
+    ctx.strokeStyle = col.t > 0.5 ? 'rgba(29,30,27,.45)' : 'rgba(239,238,233,.55)';
+    ctx.lineWidth = 1.25; ctx.stroke();
+    var east = skyPoint(Math.PI / 2, 0, w, h, state.south);
+    var west = skyPoint(Math.PI * 1.5, 0, w, h, state.south);
+    var midAz = state.south ? 0 : Math.PI;
+    var mid = skyPoint(midAz, 0, w, h, state.south);
+    var rs = riseSet(phi);
+    haloText(ctx, '东', east.x, horizon - 18, col.ink, 13);
+    haloText(ctx, '西', west.x, horizon - 18, col.ink, 13);
+    haloText(ctx, state.south ? '北' : '南', mid.x, horizon - 18, col.ink, 13);
+    function place(body) {
+      var p = skyPoint(body.az, Math.max(body.alt, -0.35), w, h, state.south);
+      var below = body.alt < -0.02;
+      if (!p.front || below) {
+        var sideEast = body.H < 0;
+        var edge = sideEast ? east : west;
+        p = { x: edge.x, y: horizon + 52 };
+      }
+      return p;
+    }
+    var sp = place(sun);
+    var mp = place(moon);
+    if (Math.hypot(mp.x - sp.x, mp.y - sp.y) < 40) mp = { x: sp.x, y: sp.y - 46 };
+    var mr = Math.max(16, Math.min(26, w * 0.04));
+    var grd = ctx.createRadialGradient(sp.x, sp.y, 4, sp.x, sp.y, 26);
+    grd.addColorStop(0, '#fff4cc'); grd.addColorStop(0.45, '#f0a63a'); grd.addColorStop(1, 'rgba(229,138,31,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, 26, 0, Math.PI * 2); ctx.fill();
+    var sunLabelY = sp.y < horizon - 40 ? sp.y + 30 : sp.y - 34;
+    var sunLabelX = sp.x;
+    if (sp.y > horizon - 8) { sunLabelX = sp.x + (sp.x < w / 2 ? 46 : -46); sunLabelY = sp.y; }
+    haloText(ctx, '太阳', sunLabelX, sunLabelY, col.ink, 12);
+    drawMoonPhase(ctx, mp.x, mp.y, mr, phi, state.south);
+    ctx.strokeStyle = col.t > 0.55 ? '#1d1e1b' : 'rgba(244,241,232,.9)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(mp.x, mp.y, mr, 0, Math.PI * 2); ctx.stroke();
+    var moonLabelY = mp.y - mr - 18;
+    if (moonLabelY < 22) moonLabelY = mp.y + mr + 14;
+    haloText(ctx, phaseInfo(phi), mp.x, moonLabelY, col.ink, 12);
+    if (moon.alt < -0.04) haloText(ctx, '在地平线下', mp.x, Math.min(h - 28, mp.y + mr + 16), col.ink, 11);
+    var phi2 = phiOf(state.age + 1);
+    var tom = horiz(state.hour, phi2, lat);
+    if (tom.alt > 0.02) {
+      var tp = skyPoint(tom.az, tom.alt, w, h, state.south);
+      if (tp.front) {
+        var dx = tp.x - mp.x, dy = tp.y - mp.y, dist = Math.hypot(dx, dy) || 1;
+        ctx.strokeStyle = '#5c7a22'; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(tp.x, tp.y, 5, 0, Math.PI * 2); ctx.stroke();
+        var lx = mp.x + dx / dist * (mr + 42);
+        var ly = mp.y + dy / dist * 10;
+        ly = clamp(ly, 18, horizon - 14);
+        if (Math.hypot(lx - mp.x, ly - mp.y) < mr + 24) lx = mp.x + (dx < 0 ? -1 : 1) * (mr + 42);
+        if (w > 480 && Math.hypot(lx - mp.x, ly - mp.y) > mr + 16) haloText(ctx, '明天', lx, ly, '#3d5a14', 11);
+      }
+    }
+    function paperLabel(text, x, y) {
+      ctx.font = '700 12px "Noto Sans SC", sans-serif';
+      var tw = ctx.measureText(text).width;
+      x = clamp(x, tw / 2 + 8, w - tw / 2 - 8);
+      ctx.fillStyle = 'rgba(239,238,233,.94)';
+      ctx.fillRect(x - tw / 2 - 5, y - 10, tw + 10, 20);
+      ctx.fillStyle = '#1d1e1b';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, x, y);
+    }
+    function clearX(x) {
+      var y = horizon + 36, dir = x < w / 2 ? 1 : -1, guard = 0;
+      while (guard < 6 && (Math.hypot(x - sp.x, y - sp.y) < 62 || Math.hypot(x - mp.x, y - mp.y) < 54)) {
+        x += dir * 26; guard++;
+      }
+      return x;
+    }
+    paperLabel('月出 ' + fmtTime(rs.rise), clearX(east.x), horizon + 36);
+    paperLabel('月落 ' + fmtTime(rs.set), clearX(west.x), horizon + 36);
+  }
+
+  function drawSide(ctx, box) {
+    var w = box.cssW, h = box.cssH;
+    ctx.fillStyle = 'rgba(239,238,233,.35)';
+    ctx.fillRect(0, 0, w, h);
+    var earthX = w * 0.56, earthY = h * 0.56;
+    var orbitR = Math.min(w, h) * 0.30;
+    var earthR = 15;
+    ctx.strokeStyle = 'rgba(229,138,31,.7)'; ctx.lineWidth = 1.2;
+    for (var k = -2; k <= 2; k++) {
+      ctx.beginPath(); ctx.moveTo(18, earthY + k * 10); ctx.lineTo(earthX - earthR - 4, earthY + k * 10); ctx.stroke();
+    }
+    var sg = ctx.createRadialGradient(36, earthY, 2, 36, earthY, 22);
+    sg.addColorStop(0, '#fff1c4'); sg.addColorStop(1, 'rgba(229,138,31,0)');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(36, earthY, 22, 0, Math.PI * 2); ctx.fill();
+    haloText(ctx, '太阳', 36, earthY + 30, '#9a5a12', 12);
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(29,30,27,.55)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(70, earthY); ctx.lineTo(w - 16, earthY); ctx.stroke();
+    ctx.setLineDash([]);
+    haloText(ctx, '黄道', w - 36, earthY - 12, '#1d1e1b', 11);
+    ctx.strokeStyle = '#1d1e1b'; ctx.lineWidth = 1.35;
+    ctx.beginPath();
+    var phiNow = phiOf(state.age), cur = null;
+    for (var i = 0; i <= 160; i++) {
+      var phi = i / 160 * Math.PI * 2;
+      var p = moonPos(phi, true, state.node);
+      var x = earthX + p[0] * orbitR;
+      var y = earthY - p[2] * orbitR * EXAG;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath(); ctx.stroke();
+    var mp = moonPos(phiNow, true, state.node);
+    cur = { x: earthX + mp[0] * orbitR, y: earthY - mp[2] * orbitR * EXAG };
+    ctx.fillStyle = '#6f9eab';
+    ctx.beginPath(); ctx.arc(earthX, earthY, earthR, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#1d1e1b'; ctx.stroke();
+    haloText(ctx, '地球', earthX, earthY + earthR + 12, '#1d1e1b', 12);
+    var mg = ctx.createLinearGradient(cur.x - 11, 0, cur.x + 11, 0);
+    mg.addColorStop(0, '#f7f4ea'); mg.addColorStop(0.45, '#d5d0c2'); mg.addColorStop(0.55, '#3a3d38'); mg.addColorStop(1, '#222420');
+    ctx.beginPath(); ctx.arc(cur.x, cur.y, 11, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill();
+    ctx.strokeStyle = '#1d1e1b'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.strokeStyle = '#d4402a'; ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(cur.x, cur.y); ctx.lineTo(cur.x, earthY); ctx.stroke();
+    ctx.setLineDash([]);
+    var beta = betaDeg(phiNow, state.node);
+    var label = (beta >= 0 ? '以北 ' : '以南 ') + Math.abs(beta).toFixed(1) + '°';
+    if (Math.abs(beta) < 0.15) label = '贴着黄道';
+    var labelX = cur.x + (cur.x > earthX ? 36 : -36);
+    haloText(ctx, label, labelX, (cur.y + earthY) / 2, '#d4402a', 12);
+    haloText(ctx, '北', earthX, Math.max(18, earthY - orbitR * 0.42 - 8), '#1d1e1b', 12);
+  }
+
+  function drawPhaseDisk() {
+    var canvas = $('phaseDisk');
+    var box = fit(canvas);
+    if (box.cssW < 2) return;
+    var ctx = ctx2d(canvas, box);
+    var r = Math.min(box.cssW, box.cssH) * 0.42;
+    drawMoonPhase(ctx, box.cssW / 2, box.cssH / 2, r, phiOf(state.age), state.south);
+    ctx.strokeStyle = '#1d1e1b'; ctx.lineWidth = 1.25;
+    ctx.beginPath(); ctx.arc(box.cssW / 2, box.cssH / 2, r, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  function drawAll() {
+    var space = $('space');
+    var box = fit(space);
+    if (box.cssW < 2 || box.cssH < 2) return;
+    view = computeView(box.cssW, box.cssH);
+    if (glPack) drawSpaceGL(glPack, box);
+    else drawSpace2D(ctx2d(space, box), box);
+    var ui = $('space-ui');
+    var ub = fit(ui);
+    drawSpaceOverlay(ctx2d(ui, ub), ub);
+    var ground = $('ground');
+    var gb = fit(ground);
+    if (gb.cssW > 2) drawGround(ctx2d(ground, gb), gb);
+    var side = $('side');
+    if (!$('sideFrame').hidden) {
+      var sb = fit(side);
+      if (sb.cssW > 2) drawSide(ctx2d(side, sb), sb);
+    }
+    drawPhaseDisk();
+  }
+
+  function shownDelay(h1, h2) {
+    var a = Math.round(wrap24(h1) * 60), b = Math.round(wrap24(h2) * 60);
+    var d = b - a;
+    if (d < -12 * 60) d += 24 * 60;
+    if (d > 12 * 60) d -= 24 * 60;
+    return d;
+  }
+
+  function syncControls() {
+    var phi = phiOf(state.age);
+    var name = phaseInfo(phi);
+    var k = (1 - Math.cos(phi)) / 2;
+    var lat = state.south ? -LAT : LAT;
+    var sky = horiz(state.hour, phi, lat);
+    var rs = riseSet(phi);
+    var rs2 = riseSet(phiOf(state.age + 1));
+    var lag = shownDelay(rs.rise, rs2.rise);
+    $('age').value = String(wrapAge(state.age));
+    $('hour').value = String(state.hour % 24);
+    $('phaseName').textContent = name;
+    $('ageText').textContent = '月龄 ' + wrapAge(state.age).toFixed(1) + ' 天';
+    $('ageLab').innerHTML = '<strong>' + wrapAge(state.age).toFixed(1) + ' 天</strong>';
+    $('hourLab').innerHTML = '<strong>' + fmtTime(state.hour) + '</strong>';
+    var waxing = phi < Math.PI && phi > 0.02;
+    var waning = phi > Math.PI && phi < Math.PI * 2 - 0.02;
+    var brightRight = (waxing && !state.south) || (waning && state.south);
+    var limb = '亮面大约 ' + Math.round(k * 100) + '%';
+    if (k < 0.03) limb += '。和太阳几乎同一方向，淹没在日光里。';
+    else if (k > 0.97) limb += '。亮面几乎全朝向地球。';
+    else limb += '，亮边在' + (brightRight ? '右' : '左') + '。';
+    $('limbText').textContent = limb;
+    var where;
+    if (sky.alt / DEG >= -1) where = '月亮在' + azName(sky.az) + '，高度约 ' + Math.round(sky.alt / DEG) + '°。';
+    else if (sky.H < 0) where = '月亮还在地平线以下，大约 ' + fmtTime(rs.rise) + ' 从正东升起。';
+    else where = '月亮已经落到地平线以下，大约 ' + fmtTime(rs.set) + ' 在正西落下。';
+    var face = state.south ? '南纬 40°，面朝北看。' : '北纬 40°，面朝南看。';
+    $('skyText').textContent = '当地太阳时 ' + fmtTime(state.hour) + '。' + face + where;
+    $('riseText').textContent = '月出 ' + fmtTime(rs.rise) + ' · 中天 ' + fmtTime(rs.transit) + ' · 月落 ' + fmtTime(rs.set);
+    $('lagText').textContent = '再过一天，月出大约是 ' + fmtTime(rs2.rise) + '，晚了 ' + lag + ' 分钟。这个模型里平均大约晚 49 分钟。';
+    $('spaceBadge').textContent = '太空俯视 · ' + name + ' · 月龄 ' + wrapAge(state.age).toFixed(1) + ' 天';
+    $('groundBadge').textContent = (state.south ? '面朝北 · 南纬 40° · ' : '面朝南 · 北纬 40° · ') + fmtTime(state.hour);
+    $('space').setAttribute('aria-label', '太空俯视。现在是' + name + '，月龄 ' + wrapAge(state.age).toFixed(1) + ' 天。太阳在左侧，可拖动月球。');
+    $('ground').setAttribute('aria-label', '地面天空。' + $('skyText').textContent + ' 月出 ' + fmtTime(rs.rise) + '，月落 ' + fmtTime(rs.set) + '。');
+    var chips = document.querySelectorAll('#phaseChips .pk-chip');
+    for (var i = 0; i < chips.length; i++) chips[i].setAttribute('aria-pressed', chips[i].textContent === name ? 'true' : 'false');
+    $('hemN').setAttribute('aria-pressed', state.south ? 'false' : 'true');
+    $('hemS').setAttribute('aria-pressed', state.south ? 'true' : 'false');
+    $('tilt').checked = state.tilt;
+    $('nodeRow').hidden = !state.tilt;
+    $('sideFrame').hidden = !state.tilt;
+    var nodes = document.querySelectorAll('[data-node]');
+    for (var j = 0; j < nodes.length; j++) nodes[j].setAttribute('aria-pressed', String(state.node) === nodes[j].getAttribute('data-node') ? 'true' : 'false');
+    var note;
+    if (!state.tilt) {
+      note = '关掉交角时，月球轨道被画在和太阳、地球同一个平面里，每个新月和满月都排成一条直线。打开开关，才看得见轨道歪了大约 5.1°，影子为什么常常对不上。';
+    } else {
+      var beta = betaDeg(phi, state.node);
+      var absb = Math.abs(beta);
+      var whereB = absb < 0.15 ? '几乎就在黄道面上' : ('在黄道面' + (beta > 0 ? '以北' : '以南') + '约 ' + absb.toFixed(1) + '°');
+      note = (state.node === 0 ? '食季：交点对着太阳。' : '平常月份：交点偏开约 90°。') + '此刻月亮' + whereB + '。';
+      if (name === '新月') note += absb < 1 ? '又是新月，月影大致朝向地球。这只是几何示意，不是预报。' : '虽是新月，月亮离开黄道面，月影会从地球旁边过去。';
+      else if (name === '满月') note += absb < 1 ? '又是满月，月亮大致走进地影的方向。这只是几何示意，不是预报。' : '虽是满月，月亮离开黄道面，会从地影旁边过去。';
+      else note += '日食只可能在新月附近，月食只可能在满月附近。可以把月龄拖到 0 天或大约 14.8 天，再切换「平常月份」和「食季」。';
+    }
+    $('eclipseNote').textContent = note;
+    $('playMonth').setAttribute('aria-pressed', state.playMonth ? 'true' : 'false');
+    $('playMonth').textContent = state.playMonth ? '暂停' : '播放一个月';
+    $('playDay').setAttribute('aria-pressed', state.playDay ? 'true' : 'false');
+    $('playDay').textContent = state.playDay ? '暂停' : '播放这一天';
+  }
+
+  function requestDraw() {
+    if (raf) return;
+    raf = requestAnimationFrame(function (t) {
+      raf = 0;
+      var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0;
+      lastT = t;
+      if (state.playMonth) state.age = wrapAge(state.age + dt * 1.15);
+      if (state.playDay) state.hour = wrap24(state.hour + dt * 2.2);
+      syncControls();
+      drawAll();
+      if (state.playMonth || state.playDay) requestDraw();
+    });
+  }
+  function stopMonth() { state.playMonth = false; }
+  function stopDay() { state.playDay = false; }
+
+  $('age').addEventListener('input', function () {
+    state.age = parseFloat(this.value); stopMonth(); requestDraw();
+  });
+  $('hour').addEventListener('input', function () {
+    state.hour = parseFloat(this.value); stopDay(); requestDraw();
+  });
+  document.querySelectorAll('#phaseChips .pk-chip').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.age = parseFloat(b.getAttribute('data-deg')) / 360 * SYNODIC;
+      stopMonth(); requestDraw();
+    });
+  });
+  document.querySelectorAll('[data-hour]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.hour = parseFloat(b.getAttribute('data-hour'));
+      stopDay(); requestDraw();
+    });
+  });
+  $('playMonth').addEventListener('click', function () {
+    state.playMonth = !state.playMonth;
+    if (state.playMonth) state.playDay = false;
+    lastT = 0; requestDraw();
+  });
+  $('playDay').addEventListener('click', function () {
+    state.playDay = !state.playDay;
+    if (state.playDay) state.playMonth = false;
+    lastT = 0; requestDraw();
+  });
+  $('hemN').addEventListener('click', function () { state.south = false; requestDraw(); });
+  $('hemS').addEventListener('click', function () { state.south = true; requestDraw(); });
+  $('tilt').addEventListener('change', function () {
+    state.tilt = this.checked;
+    requestDraw();
+    setTimeout(function () { if (window.Poketto) window.Poketto.repaint(); }, 80);
+  });
+  document.querySelectorAll('[data-node]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.node = parseFloat(b.getAttribute('data-node'));
+      requestDraw();
+    });
+  });
+
+  function bindSpaceDrag() {
+    var canvas = $('space');
+    var drag = null;
+    function xy(e) {
+      var r = canvas.getBoundingClientRect();
+      var x = (e.clientX - r.left) / r.width;
+      var y = (e.clientY - r.top) / r.height;
+      return [view.l + x * (view.r - view.l), view.t - y * (view.t - view.b)];
+    }
+    canvas.addEventListener('pointerdown', function (e) {
+      var p = xy(e);
+      var phi = phiOf(state.age);
+      var mp = moonPos(phi, state.tilt, state.node);
+      var mx = mp[0] * ORBIT, my = mp[1] * ORBIT;
+      var dist = Math.hypot(p[0], p[1]);
+      var nearMoon = Math.hypot(p[0] - mx, p[1] - my) < 0.7;
+      var nearOrbit = Math.abs(dist - ORBIT) < 0.85 && dist > 0.4;
+      if (!nearMoon && !nearOrbit) return;
+      drag = e.pointerId;
+      canvas.setPointerCapture(e.pointerId);
+      state.age = wrapAge(Math.atan2(-p[1], -p[0]) / (Math.PI * 2) * SYNODIC);
+      if (state.age < 0) state.age += SYNODIC;
+      stopMonth(); requestDraw();
+      e.preventDefault();
+    });
+    canvas.addEventListener('pointermove', function (e) {
+      if (drag !== e.pointerId) return;
+      var p = xy(e);
+      var ang = Math.atan2(-p[1], -p[0]);
+      if (ang < 0) ang += Math.PI * 2;
+      state.age = ang / (Math.PI * 2) * SYNODIC;
+      requestDraw();
+    });
+    function end(e) { if (drag === e.pointerId) drag = null; }
+    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointercancel', end);
+    canvas.addEventListener('keydown', function (e) {
+      var big = e.shiftKey ? 1 : 0.2;
+      if (e.key === 'ArrowLeft') { state.age = wrapAge(state.age - big); stopMonth(); }
+      else if (e.key === 'ArrowRight') { state.age = wrapAge(state.age + big); stopMonth(); }
+      else if (e.key === 'ArrowUp') { state.hour = wrap24(state.hour + (e.shiftKey ? 1 : 0.25)); stopDay(); }
+      else if (e.key === 'ArrowDown') { state.hour = wrap24(state.hour - (e.shiftKey ? 1 : 0.25)); stopDay(); }
+      else return;
+      e.preventDefault(); requestDraw();
+    });
+  }
+  function bindGroundDrag() {
+    var canvas = $('ground');
+    var drag = null;
+    canvas.addEventListener('pointerdown', function (e) {
+      drag = { id: e.pointerId, x: e.clientX, hour: state.hour };
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener('pointermove', function (e) {
+      if (!drag || drag.id !== e.pointerId) return;
+      var w = canvas.getBoundingClientRect().width || 1;
+      var dir = state.south ? -1 : 1;
+      state.hour = wrap24(drag.hour + dir * (e.clientX - drag.x) / w * 18);
+      stopDay(); requestDraw();
+    });
+    function end(e) { if (drag && drag.id === e.pointerId) drag = null; }
+    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointercancel', end);
+    canvas.addEventListener('keydown', function (e) {
+      var step = e.shiftKey ? 1 : 0.25;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') state.hour = wrap24(state.hour - step);
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') state.hour = wrap24(state.hour + step);
+      else return;
+      stopDay(); e.preventDefault(); requestDraw();
+    });
+  }
+
+  var errs = selfCheck();
+  var check = $('check');
+  if (errs.length) { check.hidden = false; check.textContent = errs.join(' | '); console.error(errs); }
+  else check.textContent = 'ok';
+
+  glPack = initGL($('space'));
+  bindSpaceDrag();
+  bindGroundDrag();
+  if (state.tilt) { $('sideFrame').hidden = false; $('nodeRow').hidden = false; }
+  syncControls();
+  requestDraw();
+  window.addEventListener('resize', function () { requestDraw(); });
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(function () { requestDraw(); });
+    ro.observe($('spaceFrame'));
+    ro.observe($('groundFrame'));
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { requestDraw(); });
+})();
+</script>
+</body>
+</html>
