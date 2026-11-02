@@ -224,7 +224,10 @@ var TIMELINE = {
   .notes { display: grid; gap: 12px; max-width: 680px; }
   .notes code { font-family: var(--mono); font-size: 12.5px; background: rgba(185,224,76,.35); padding: 0 4px; border-radius: 2px; }
   .addf { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px 18px; align-items: start; }
-  .addf [hidden] { display: none; }
+  .addf [hidden], #addf[hidden], #unlockf[hidden], #edit-on[hidden] { display: none; }
+  .lockbtn { all: unset; cursor: pointer; margin-left: 10px; font-size: 13px; color: var(--ink); text-decoration: underline; padding: 2px 4px; }
+  .lockbtn:hover { background: linear-gradient(transparent 60%, rgba(185,224,76,.7) 60%); }
+  .lockbtn:focus-visible { outline: 2px solid var(--leaf); outline-offset: 2px; }
   .addf .wide { grid-column: 1 / -1; }
   .fld { display: grid; gap: 4px; min-width: 0; font-size: 13px; color: var(--ink-2); }
   .fld > span { font-weight: 700; color: var(--ink); }
@@ -299,8 +302,14 @@ var TIMELINE = {
 
   <section class="detail pk-br pk-veil" aria-label="添加我自己的事件">
     <div class="pk-h2"><small>Add yours</small>加上我自己的事件</div>
-    <p class="pk-note">想对照自己的经历、一个家族、一门学科都可以：填好点“添加”，它就出现在上面的时间线上。</p>
-    <form id="addf" class="addf" autocomplete="off">
+    <p class="pk-note" id="mode-note">想对照自己的经历、一个家族、一门学科都可以。内置的时间线谁都可以看。写入网站上的「我的事件」要先解锁；连不上网站时，添加的内容只留在这台设备的浏览器里，解锁也不会把它变成云端保存。</p>
+    <form id="unlockf" class="addf" autocomplete="off" hidden>
+      <label class="fld"><span>编辑密钥</span><input id="unlock-key" type="password" name="edit-key" autocomplete="current-password" spellcheck="false" autocapitalize="off" autocorrect="off"></label>
+      <div class="wide"><button class="addbtn" type="submit">解锁编辑</button></div>
+      <p class="lab wide" id="unlock-msg" role="status"></p>
+    </form>
+    <p class="lab" id="edit-on" hidden>这次浏览已解锁，可以写入网站。<button type="button" class="lockbtn" id="lock-again">锁定</button></p>
+    <form id="addf" class="addf" autocomplete="off" hidden>
       <label class="fld wide"><span>名字</span><input id="f-title" type="text" maxlength="30" placeholder="比如：我出生"></label>
       <label class="fld"><span>放在哪一行</span><select id="f-track"></select></label>
       <label class="fld" id="f-newbox" hidden><span>新轨道的名字</span><input id="f-newtrack" type="text" maxlength="12" value="我的"></label>
@@ -316,7 +325,7 @@ var TIMELINE = {
       <label class="fld wide"><span>说明（可以不写）</span><textarea id="f-note" rows="2" maxlength="300" placeholder="点开这一条时会显示"></textarea></label>
       <div class="wide ctrl between">
         <label class="pk-check"><input id="f-approx" type="checkbox">年份不确定（会用虚线标出）</label>
-        <button class="addbtn" type="submit">添加到时间线</button>
+        <button class="addbtn" id="f-submit" type="submit">添加到时间线</button>
       </div>
       <p class="lab wide" id="f-msg" role="status"></p>
       <p class="lab wide" id="f-store" hidden>这个浏览器不允许保存，添加的内容刷新页面后会消失。</p>
@@ -356,7 +365,12 @@ var TIMELINE = {
   var NOW = new Date().getFullYear();
   var R0 = D.range[0], R1 = Math.max(D.range[1], NOW + 4);
   var MIN_SPAN = 12;
-  var API = '/api/timeline', cloud = false;
+  var API = '/api/timeline';
+  // 云端写入锁：GET 公开。PUT 要带这次浏览里解锁得到的密钥。本机模式不走这把锁。
+  var KEY_STORE = 'poketto-timeline-edit-key';
+  var saveMode = /^https?:$/.test(location.protocol) ? 'pending' : 'local';
+  var unlocked = false, editKey = '';
+  try { editKey = sessionStorage.getItem(KEY_STORE) || ''; } catch (_) { editKey = ''; }
   function safeId(s){ return String(s == null ? '' : s).replace(/[^a-z0-9]/gi, '').slice(0, 24); }
   function yr(n){ return typeof n === 'number' && isFinite(n) && n !== 0 ? Math.round(n) : null; }
   // data from storage or the server is never trusted: keep only well-formed fields
@@ -723,7 +737,7 @@ var TIMELINE = {
 
   // ---------- my events ----------
   var fm = { title: $('f-title'), track: $('f-track'), newt: $('f-newtrack'), kind: $('f-kind'), e1: $('f-era1'), y1: $('f-y1'),
-    e2: $('f-era2'), y2: $('f-y2'), now: $('f-now'), note: $('f-note'), approx: $('f-approx'), btn: document.querySelector('.addbtn'), msg: $('f-msg'), span: $('f-span'), newbox: $('f-newbox') };
+    e2: $('f-era2'), y2: $('f-y2'), now: $('f-now'), note: $('f-note'), approx: $('f-approx'), btn: $('f-submit'), msg: $('f-msg'), span: $('f-span'), newbox: $('f-newbox') };
   var PALETTE = ['#f08a7a', '#7ab8f0', '#c79af0', '#f0d85c', '#7fd6c2'];
   function yearVal(era, input){ var n = parseInt(input.value, 10); return n >= 1 ? (era === 'bc' ? -n : n) : null; }
   function syncForm(){
@@ -742,26 +756,98 @@ var TIMELINE = {
     fm.track.value = ok ? cur : (USER.tracks.length ? USER.tracks[0].id : '__new');
     syncForm();
   }
+  function canWrite(){ return saveMode === 'local' || (saveMode === 'cloud' && unlocked); }
+  function writeNote(){
+    var note = $('mine-note');
+    if(saveMode === 'cloud' && unlocked) note.textContent = '这些内容存在网站上，换设备也在。';
+    else if(saveMode === 'cloud') note.textContent = '这些是网站上保存的事件，现在只能看。解锁后才能删除。';
+    else note.textContent = '这些内容只存在这台设备的浏览器里，换设备或清除浏览器数据后不会保留。';
+  }
   function renderMine(){
-    var box = $('mine'), list = $('mine-list');
-    box.hidden = !USER.events.length;
+    var box = $('mine'), list = $('mine-list'), writable = canWrite();
+    box.hidden = saveMode === 'pending' || !USER.events.length;
     list.innerHTML = USER.events.map(function(e){
       return '<li><button type="button" class="mine-go" data-uid="' + e.uid + '">' + esc(e.title) + '<em>' + esc(when(e).replace(/公元/g, '')) + '</em></button>' +
-        '<button type="button" class="mine-del" data-uid="' + e.uid + '" aria-label="删除 ' + esc(e.title) + '">删除</button></li>';
+        (writable ? '<button type="button" class="mine-del" data-uid="' + e.uid + '" aria-label="删除 ' + esc(e.title) + '">删除</button>' : '') + '</li>';
     }).join('');
-    $('f-store').hidden = storeOk;
+    $('f-store').hidden = saveMode !== 'local' || storeOk;
+    writeNote();
   }
   function afterChange(){
     build(); trackChips(); fillTracks(); renderMine(); render();
   }
-  function syncKeyUi(){
-    $('mine-note').textContent = cloud ? '这些内容存在网站上，换设备也在。' : '这些内容只存在这台设备的浏览器里，换设备或清除浏览器数据后不会保留。';
+  function authHeaders(extra){
+    var h = { authorization: 'Bearer ' + encodeURIComponent(editKey) };
+    if(extra) Object.keys(extra).forEach(function(k){ h[k] = extra[k]; });
+    return h;
   }
-  // returns '' on success, otherwise a message for the user
+  function rememberKey(){ try { sessionStorage.setItem(KEY_STORE, editKey); } catch(_){} }
+  function forgetKey(){
+    editKey = ''; unlocked = false;
+    try { sessionStorage.removeItem(KEY_STORE); } catch(_){}
+  }
+  function syncModeUi(){
+    var note = $('mode-note');
+    if(saveMode === 'pending') note.textContent = '正在确认「我的事件」是存在网站上，还是只存在这台设备里。';
+    else if(saveMode === 'cloud' && unlocked) note.textContent = '已解锁。填好下面的表，添加和删除会写入网站，换设备也能看到。关掉页面后需要再解锁。这和只存在这台浏览器里的保存不是一回事。';
+    else if(saveMode === 'cloud') note.textContent = '公开浏览中，编辑需解锁。看时间线和已保存的事件不用密钥；解锁后，这次浏览才能把改动写入网站。';
+    else note.textContent = '当前是本机保存：添加和删除只留在这台设备的浏览器里，不会写入网站。编辑锁只在连上网站时保护云端写入；在这里解锁也不会变成云端保存。';
+    $('unlockf').hidden = saveMode !== 'cloud' || unlocked;
+    $('edit-on').hidden = !(saveMode === 'cloud' && unlocked);
+    $('addf').hidden = !canWrite();
+    fm.btn.textContent = saveMode === 'cloud' ? '添加到网站' : '添加到时间线';
+    renderMine();
+  }
+  // returns '' on success, otherwise a message for the user. Does not write when locked.
   function persist(){
-    if(!cloud) return Promise.resolve(save() ? '' : '这个浏览器不让保存，刷新页面后会消失。');
-    return fetch(API, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(USER) })
-      .then(function(r){ return r.ok ? '' : '没有保存成功，请稍后再试。'; }, function(){ return '连不上网站，没有保存。'; });
+    if(saveMode === 'pending') return Promise.resolve('请稍等，正在确认保存在哪里。');
+    if(saveMode !== 'cloud') return Promise.resolve(save() ? '' : '这个浏览器不让保存，刷新页面后会消失。');
+    if(!unlocked || !editKey) return Promise.resolve('公开浏览中，编辑需解锁。这次没有写入网站。');
+    return fetch(API, { method: 'PUT', headers: authHeaders({ 'content-type': 'application/json' }), body: JSON.stringify(USER) })
+      .then(function(r){
+        if(r.status === 401){ forgetKey(); return '密钥不对，没有写入网站。请重新解锁。'; }
+        if(!r.ok || (r.headers.get('content-type') || '').indexOf('json') < 0) return '没有保存成功，请稍后再试。';
+        return r.json().then(function(j){ return j && j.ok ? '' : '没有保存成功，请稍后再试。'; }, function(){ return '没有保存成功，请稍后再试。'; });
+      }, function(){ return '连不上网站，没有保存。'; });
+  }
+  var unlockBusy = false;
+  function confirmUnlock(fromSession){
+    if(unlockBusy) return Promise.resolve();
+    unlockBusy = true;
+    $('unlock-msg').textContent = fromSession ? '正在确认上次的编辑密钥…' : '正在核对密钥…';
+    var btn = $('unlockf').querySelector('button');
+    btn.disabled = true;
+    function finish(msg){
+      unlockBusy = false;
+      btn.disabled = false;
+      unlocked = false;
+      $('unlock-msg').textContent = msg;
+      syncModeUi();
+    }
+    return fetch(API + '/unlock', { method: 'POST', headers: authHeaders(), cache: 'no-store' }).then(function(r){
+      var isJson = (r.headers.get('content-type') || '').indexOf('json') >= 0;
+      return (isJson ? r.json().catch(function(){ return null; }) : Promise.resolve(null)).then(function(j){
+        if(r.ok && j && j.ok){
+          unlockBusy = false;
+          btn.disabled = false;
+          unlocked = true;
+          rememberKey();
+          $('unlock-key').value = '';
+          $('unlock-msg').textContent = '';
+          syncModeUi();
+          if(!fromSession) $('f-title').focus();
+          return;
+        }
+        if(r.status === 401) forgetKey();
+        else if(!fromSession) editKey = '';
+        finish(r.status === 401
+          ? (fromSession ? '上次的密钥已经失效，请重新输入。' : '密钥不对，没有解锁。')
+          : '没有解锁成功，请稍后再试。');
+      });
+    }).catch(function(){
+      if(!fromSession) editKey = '';
+      finish('连不上网站，没有解锁。这不会把本机保存变成写入网站。');
+    });
   }
   ['f-track', 'f-kind', 'f-now'].forEach(function(id){ $(id).addEventListener('change', syncForm); });
   $('addf').addEventListener('submit', function(ev){
@@ -779,6 +865,8 @@ var TIMELINE = {
     }
     if(!bad && fm.track.value === '__new' && !fm.newt.value.trim()) bad = '请给新轨道起个名字。';
     if(bad){ fm.msg.textContent = bad; return; }
+    if(saveMode === 'pending'){ fm.msg.textContent = '请稍等，正在确认保存在哪里。'; return; }
+    if(saveMode === 'cloud' && !unlocked){ fm.msg.textContent = '公开浏览中，编辑需解锁。这次没有写入网站。'; return; }
     var prev = JSON.stringify(USER), tid = fm.track.value;
     if(tid === '__new'){
       tid = 'u' + Date.now().toString(36);
@@ -790,10 +878,15 @@ var TIMELINE = {
     fm.btn.disabled = true; fm.msg.textContent = '保存中…';
     persist().then(function(err){
       fm.btn.disabled = false;
-      if(err && cloud){ USER = JSON.parse(prev); fm.msg.textContent = err; return; }
+      if(err && saveMode === 'cloud'){
+        USER = JSON.parse(prev);
+        syncModeUi();
+        if(unlocked) fm.msg.textContent = err; else $('unlock-msg').textContent = err;
+        return;
+      }
       afterChange();
       fm.title.value = ''; fm.note.value = ''; fm.y1.value = ''; fm.y2.value = ''; fm.approx.checked = false;
-      fm.msg.textContent = err || (cloud ? '已添加并保存到网站。' : '已添加，下面能找到它，点“删除”可以去掉。');
+      fm.msg.textContent = err || (saveMode === 'cloud' ? '已添加并保存到网站。' : '已添加，下面能找到它，点“删除”可以去掉。');
       var ne = items.filter(function(o){ return o.uid === e.uid; })[0];
       if(!ne) return;
       select(ne, false);
@@ -809,16 +902,40 @@ var TIMELINE = {
       return;
     }
     if(!del) return;
+    if(saveMode !== 'local' && !(saveMode === 'cloud' && unlocked)){
+      $('unlock-msg').textContent = '公开浏览中，编辑需解锁。这次没有写入网站。';
+      return;
+    }
     var uid = del.getAttribute('data-uid'), prev = JSON.stringify(USER);
     USER.events = USER.events.filter(function(o){ return o.uid !== uid; });
     USER.tracks = USER.tracks.filter(function(t){ return USER.events.some(function(o){ return o.track === t.id; }); });
     persist().then(function(err){
-      if(err && cloud){ USER = JSON.parse(prev); fm.msg.textContent = err; return; }
+      if(err && saveMode === 'cloud'){
+        USER = JSON.parse(prev);
+        syncModeUi();
+        if(unlocked) fm.msg.textContent = err; else $('unlock-msg').textContent = err;
+        return;
+      }
       afterChange(); intro();
       fm.msg.textContent = err || '已删除。';
     });
   });
-  fillTracks(); renderMine();
+  $('unlockf').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var key = $('unlock-key').value;
+    if(!String(key).trim()){ $('unlock-msg').textContent = '请先填写编辑密钥。'; return; }
+    editKey = key;
+    confirmUnlock(false);
+  });
+  $('lock-again').addEventListener('click', function(){
+    forgetKey();
+    $('unlock-key').value = '';
+    syncModeUi();
+    $('unlock-msg').textContent = '已锁定。再写入网站需要重新解锁。';
+    $('unlock-key').focus();
+  });
+  fillTracks();
+  syncModeUi();
 
   intro();
   draw();
@@ -827,10 +944,17 @@ var TIMELINE = {
       if(!r.ok || (r.headers.get('content-type') || '').indexOf('json') < 0) throw 0;
       return r.json();
     }).then(function(j){
-      if(!j || typeof j.data !== 'object') throw 0;
-      cloud = true; USER = clean(j.data);
-      syncKeyUi(); afterChange();
-    }).catch(function(){});
+      if(!j || typeof j.data !== 'object' || j.data == null) throw 0;
+      saveMode = 'cloud';
+      USER = clean(j.data);
+      afterChange();
+      if(editKey){ $('mode-note').textContent = '正在确认编辑密钥…'; confirmUnlock(true); return; }
+      syncModeUi();
+    }).catch(function(){
+      saveMode = 'local';
+      unlocked = false;
+      syncModeUi();
+    });
   }
   if(window.ResizeObserver) new ResizeObserver(render).observe(tl); else window.addEventListener('resize', render);
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ measureAll(); render(); });

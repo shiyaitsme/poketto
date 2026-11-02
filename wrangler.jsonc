@@ -1,4 +1,7 @@
 {
+  // Timeline writes check the Worker secret EDIT_PASS. Set it outside the repo:
+  //   wrangler secret put EDIT_PASS
+  // Do not put the passphrase in this file. If the secret is missing, PUT stays closed.
   "name": "poketto",
   "main": "worker.js",
   "compatibility_date": "2026-10-01",
