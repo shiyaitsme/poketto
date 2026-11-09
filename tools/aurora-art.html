@@ -20,35 +20,36 @@
   .line.on { opacity: 1; }
   .line .zh { display: block; font-size: clamp(17px, 2.3vw, 26px); letter-spacing: .14em; }
   .line .en { display: block; margin-top: .55em; font-size: clamp(14px, 1.7vw, 20px); font-style: italic; letter-spacing: .04em; color: var(--dim); }
+  .line .hint { display: block; margin-top: 1.1em; font-size: clamp(12px, 1.3vw, 15px); letter-spacing: .12em; color: var(--dim); opacity: .8; }
+  .tools button[aria-pressed="true"] { color: #f3b6e6; }
+  .toast { position: absolute; top: 56px; right: 24px; max-width: min(460px, 80vw); margin: 0; font-size: 12px; line-height: 1.5; letter-spacing: .05em; color: var(--dim); opacity: 0; transition: opacity .5s; pointer-events: none; text-align: right; }
+  .toast.on { opacity: 1; }
   .mark { position: absolute; top: 20px; left: 24px; margin: 0; pointer-events: none; font-size: 13px; letter-spacing: .18em; color: var(--dim); }
   .mark b { font-weight: 500; color: var(--fg); }
   .tools { position: absolute; top: 14px; right: 16px; display: flex; gap: 4px; opacity: .45; transition: opacity .4s; }
   .tools:hover, .tools:focus-within { opacity: 1; }
   .tools button { font: inherit; font-size: 13px; letter-spacing: .08em; color: var(--fg); background: none; border: 0; padding: 8px 10px; cursor: pointer; }
-  #micDot { color: #f3b6e6; opacity: 0; font-size: 10px; vertical-align: 1px; margin-right: 2px; transition: opacity .15s; }
   .tools button:hover { text-decoration: underline; text-underline-offset: 4px; }
-  .tools button[aria-pressed="true"] { color: #f3b6e6; }
   .tools button:focus-visible, #art:focus-visible { outline: 1px solid #f3b6e6; outline-offset: 2px; }
-  .toast { position: absolute; top: 56px; right: 24px; margin: 0; font-size: 12px; letter-spacing: .06em; color: var(--dim); opacity: 0; transition: opacity .5s; pointer-events: none; text-align: right; }
-  .toast.on { opacity: 1; }
   @media (prefers-reduced-motion: reduce) { .line { transition-duration: .01s; } }
 </style>
 </head>
 <body>
 <canvas id="art" tabindex="0" role="img"
-  aria-label="Interactive generative aurora. 交互式生成极光。Move the pointer to pull the light; stay still and it fades; click for a burst; optionally use the microphone. 移动指针牵引光，静止则逐渐消散，点击触发爆发，也可以开启麦克风。"></canvas>
+  aria-label="Interactive generative aurora. 交互式生成极光。Move the pointer to pull the light; stay still and it fades; click for a burst; press and hold to draw it closer; optionally let music from another tab move it. 移动指针牵引光，静止则逐渐消散，点击触发爆发，按住不动则光慢慢聚拢，也可以让另一个标签页的音乐牵动它。"></canvas>
 <canvas id="over" aria-hidden="true"></canvas>
 <div class="fallback" id="fallback" hidden><p>这个浏览器打不开 WebGL2，看不到极光。<br><i>WebGL2 is not available in this browser.</i></p></div>
 
 <p class="mark"><b>在地球另一端，和极光共振</b> &nbsp;Resonating with the aurora, from the other end of the Earth</p>
 <div class="tools" role="group" aria-label="Controls 控制">
-  <button type="button" id="micBtn" aria-pressed="false" title="Let sound summon the light 用声音召唤极光"><span id="micDot" aria-hidden="true">●</span> 声音 Sound</button>
+  <button type="button" id="musBtn" aria-pressed="false" title="Let music move the light 让音乐牵动极光">音乐 Music</button>
   <button type="button" id="fsBtn" title="Fullscreen 全屏">全屏 Full</button>
   <button type="button" id="shotBtn" title="Save frame 保存画面">存图 Save</button>
 </div>
+
 <p class="toast" id="toast" role="status" aria-live="polite"></p>
 
-<p class="line" id="lineA" aria-live="polite"><span class="zh">动一动，它就会回应你。</span><span class="en">Move, and it answers.</span></p>
+<p class="line" id="lineA" aria-live="polite"><span class="zh">动一动，它就会回应你。</span><span class="en">Move, and it answers.</span><span class="hint">按住不动，光会靠近 · Hold still, and it gathers</span></p>
 <p class="line" id="lineB" aria-live="polite"><span class="zh">共振停了。想象需要被一直维系。</span><span class="en">The resonance has stopped. Imagination has to be kept alive.</span></p>
 
 <script>
@@ -58,7 +59,7 @@
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var test = /[?&]test\b/.test(location.search);   // ?test freezes the clock for screenshots
 
-  var FS = "#version 300 es\nprecision highp float;\nout vec4 o;\nuniform vec2 R, uMag;\nuniform float T, uYaw, uPitch, uTan, uPeak, uAct, uEye, uMagOn, uBurst, uBurstAge, uBurstX;\nuniform int uPal, uGround;\nuniform float uCore, uCoreX, uGrain, uVoice;\n\nconst float PI = 3.14159265;\n// per palette: low / mid / high altitude colours\nconst vec3 PL[12] = vec3[12](\n  vec3(1.0,1.0,.88), vec3(.99,.60,.86), vec3(.62,.78,1.0),   // photo (from reference image): yellow-white, pink, cyan-white\n  vec3(.95,.42,.80), vec3(.30,1.0,.48), vec3(.95,.22,.28),   // physical: N2 pink, O green, O red\n  vec3(.45,.72,1.0), vec3(.45,.95,.95), vec3(.66,.46,.95),   // ice\n  vec3(1.0,.55,.35), vec3(.98,.25,.38), vec3(.72,.22,.62));  // ember\nconst vec3 SZ[4] = vec3[4](vec3(.41,.37,.50), vec3(.03,.05,.13), vec3(.04,.07,.19), vec3(.09,.04,.12));\nconst vec3 SHZ[4] = vec3[4](vec3(.455,.435,.57), vec3(.10,.12,.24), vec3(.13,.19,.35), vec3(.23,.10,.20));\n\nfloat h11(float n){ return fract(sin(n*12.9898)*43758.5453); }\nfloat h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }\nfloat n1(float x){ float i=floor(x),f=fract(x); f=f*f*(3.-2.*f); return mix(h11(i),h11(i+1.),f); }\nfloat n2(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);\n  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }\nfloat fbm(vec2 p){ float s=0.,a=.5; for(int i=0;i<4;i++){ s+=a*n2(p); p=p*2.03+vec2(5.2,1.3); a*=.5; } return s; }\nfloat sst(float a,float b,float x){ float t=clamp((x-a)/(b-a),0.,1.); return t*t*(3.-2.*t); }\n\nvec3 emitCol(float h){\n  float wl=1.-sst(95.,115.,h), wm=sst(90.,105.,h)*(1.-sst(170.,250.,h)), wh=sst(150.,240.,h);\n  float s=max(wl+wm+wh,1e-3);\n  return (wl*PL[uPal*3]+wm*PL[uPal*3+1]+wh*PL[uPal*3+2])/s;\n}\n\n// Volumetric curtains: march through horizontal slabs between 88 and 330 km altitude.\n// Each curtain is a thin sheet whose centre line wanders, leans and twists with height.\nvec3 aurora(vec3 rd, float dither){\n  if(rd.y<.015) return vec3(0.);\n  const int N=24;\n  float h0=88., h1=330., dh=(h1-h0)/float(N);\n  float Tm=T*(.55+.7*uAct), ry=max(rd.y,.05);\n  float sgL=max(8.,uPeak*.11), sgH=max(28.,uPeak*.40);\n  vec3 acc=vec3(0.);\n  for(int i=0;i<N;i++){\n    float h=h0+(float(i)+dither)*dh;\n    float s=h/rd.y;\n    if(s>1500.) break;\n    float d=h-uPeak;\n    float sg=d<0.?sgL:sgH;\n    float prof=exp(-d*d/(2.*sg*sg))+.30*exp(-pow((h-uPeak-85.)/75.,2.));\n\n    {\n      vec2 qp=rd.xz*s;\n      float sx=34.+.16*(h-90.), sz=40.;\n      float dxc=qp.x-uCoreX, dzc=qp.y-(335.+40.*sin(Tm*.04));\n      float body=exp(-dxc*dxc/(2.*sx*sx))*exp(-dzc*dzc/(2.*sz*sz));\n      float rays2=.15+1.1*pow(n1(qp.x*.26+Tm*.28),1.6);\n      rays2=mix(1.,rays2,exp(-s*.0025));\n      float hp=sst(86.,108.,h)*(1.-.60*sst(210.,330.,h));\n      vec3 pc=mix(vec3(1.,.90,.80),vec3(.96,.34,.80),sst(92.,150.,h));\n      float base2=exp(-(h-92.)/16.);                         // bright, near-white foot of the pillar\n      float fadeP=exp(-s*.0011)*sst(.015,.14,rd.y);\n      acc+=(pc*(1.+1.1*base2))*body*rays2*hp*uCore*2.8*fadeP*(dh/ry)*.0072;\n    }\n    if(prof<.02) continue;\n    vec2 q=rd.xz*s;                       // km east, km north\n    float dens=0.;\n    for(int k=0;k<3;k++){\n      float fk=float(k);\n      float zc=250.+fk*150.\n        +85.*sin(q.x*.0058+fk*2.1+Tm*.07)\n        +50.*sin(q.x*.0125-fk*1.3-Tm*.10+(h-100.)*.006)\n        +120.*(n1(q.x*.0040+fk*9.+Tm*.035)-.5)\n        +(h-120.)*(.5*sin(fk*1.7+Tm*.05)+.12)            // lean: top leans away from the base\n        +40.*uAct*sin(q.x*.028+h*.022+Tm*.17+fk);       // twist with height\n      zc+=uVoice*75.*sin(q.x*.011-T*1.0+fk*1.7)*(.4+.6*sst(88.,260.,h));\n      zc+=uMagOn*.85*exp(-pow((q.x-uMag.x)/130.,2.))*(uMag.y-zc);      // cursor pulls the curtain\n      float bd=abs(q.x-uBurstX);\n      zc+=uBurst*38.*sin(bd*.02-uBurstAge*1.4)*exp(-bd*.003);          // substorm ripple\n      float dd=q.y-zc;\n      float w=9.+(h-100.)*.03+6.*n1(q.x*.02+fk*4.+Tm*.05);\n      float sheet=exp(-dd*dd/(2.*w*w))+.28*exp(-abs(dd)/(w*5.));\n      float rays=.35+pow(n1(q.x*.14+fk*17.+Tm*.25),1.6);\n      rays=mix(1.,rays,exp(-s*.0030));\n      float pat=sst(.22,.62,n1(q.x*.0046+fk*5.+Tm*.04));\n      dens+=sheet*rays*(.25+.95*pat)*(1.-.2*fk);\n    }\n    float densA=0.;\n    if(uPal==0){\n      float za=330.+q.x*.62+55.*sin(q.x*.004+Tm*.04)+(h-120.)*.25*sin(Tm*.03);\n      float da=q.y-za, wa=50.+(h-100.)*.05;\n      densA=0.6*(exp(-da*da/(2.*wa*wa))+.25*exp(-abs(da)/(wa*5.)))*(.55+.45*n1(q.x*.011+Tm*.03))*(.7+.3*n1(q.x*.12+Tm*.2));\n    }\n    dens*=1.+.7*uBurst*exp(-abs(q.x-uBurstX)*.003);\n    float fade=exp(-s*.0011)*sst(.015,.14,rd.y);\n    acc+=emitCol(h)*dens*prof*fade*(dh/ry)*.0072;\n    acc+=vec3(.70,.82,1.0)*densA*prof*fade*(dh/ry)*.0072;\n  }\n  return acc*(.16+1.2*uCore+.3*uVoice)*.8;\n}\n\nfloat stars(vec3 rd){\n  float lat=asin(clamp(rd.y,-1.,1.)), lon=atan(rd.z,rd.x), s=0.;\n  for(int k=0;k<2;k++){\n    float rows=k==0?260.:110.;\n    float fl=lat/(PI*.5)*rows, ri=floor(fl);\n    float cols=max(6.,floor(rows*4.*cos((ri+.5)/rows*PI*.5)));\n    float fc=(lon/(2.*PI)+.5)*cols, ci=floor(fc);\n    vec2 id=vec2(ri,ci)+float(k)*31.;\n    float r=h21(id);\n    if(r<(k==0?.17:.05)){\n      vec2 f=vec2(fract(fl),fract(fc))-vec2(.2+.6*h21(id+7.),.2+.6*h21(id+13.));\n      float tw=.7+.3*sin(T*1.6+r*90.);\n      s+=smoothstep(k==0?.27:.32,0.,length(f))*tw*(k==0?.8:1.2)*(.6+.8*h21(id+3.));\n    }\n  }\n  return s;\n}\n\nvec3 skyAt(vec3 rd, float dither){\n  float ty=clamp(rd.y,0.,1.);\n  vec3 base=mix(SHZ[uPal],SZ[uPal],pow(ty,.55))*mix(1.,.10,uEye)*.42;\n  vec3 au=aurora(rd,dither);\n  au=1.-exp(-au*1.15);\n  au=mix(au,vec3(dot(au,vec3(.33)))*vec3(.70,1.,.85)*.75,uEye*.85);\n  float st=stars(rd);\n  vec3 c=1.-(1.-base)*(1.-au);\n  if(uPal==0){\n    float az=atan(rd.x,rd.z);\n    float lowE=1.-sst(0.,.30,rd.y);\n    float g1=exp(-pow((az-.12)/.30,2.))*lowE*lowE;\n    float g2=exp(-pow((az-1.0)/.34,2.))*(1.-sst(0.,.14,rd.y));\n    float g3=exp(-pow((az+.95)/.45,2.))*lowE*lowE*.35;\n    vec3 glw=(vec3(.99,1.,.96)*g1*1.25+vec3(.93,.97,.82)*g2*.8+vec3(.78,.84,.98)*g3)*(.55+.45*uAct)*mix(1.,.15,uEye)*.5;\n    c=1.-(1.-c)*(1.-glw);\n  }\n  float la=dot(au,vec3(.33));\n  c+=vec3(.92,.94,1.)*st*(1.-clamp(la*1.4,0.,.9))*mix(.9,.4,uEye)*(.35+.65*sst(0.,.2,rd.y));\n  return c;\n}\n\nvec3 seaNormal(vec2 p,float dist){\n  float t=T*.5;\n  vec2 q=p*.35+vec2(t*.2,0.);\n  float e=.05;\n  float c0=fbm(q)+.4*fbm(p*1.2-vec2(0.,t*.35));\n  float cx=fbm(q+vec2(e,0.))+.4*fbm((p+vec2(e,0.))*1.2-vec2(0.,t*.35));\n  float cz=fbm(q+vec2(0.,e))+.4*fbm((p+vec2(0.,e))*1.2-vec2(0.,t*.35));\n  float k=(.9*exp(-dist*.025)+.05)/e*.25;\n  return normalize(vec3(-(cx-c0)*k,1.,-(cz-c0)*k));\n}\n\nvoid main(){\n  vec2 p=(2.*gl_FragCoord.xy-R)/R.y;\n  vec3 rc=normalize(vec3(p*uTan,1.));\n  float cp=cos(uPitch), sp=sin(uPitch), cy=cos(uYaw), sy=sin(uYaw);\n  vec3 r1=vec3(rc.x, rc.y*cp+rc.z*sp, rc.z*cp-rc.y*sp);\n  vec3 rd=vec3(r1.x*cy+r1.z*sy, r1.y, r1.z*cy-r1.x*sy);\n  float dither=h21(gl_FragCoord.xy+fract(T)*13.);\n  float expo=mix(1.,.30,uEye);\n  vec3 hz=SHZ[uPal]*mix(1.,.10,uEye);\n  vec3 col;\n\n  if(rd.y>=0.||uGround==2){\n    col=skyAt(vec3(rd.x,abs(rd.y),rd.z),dither);\n  } else if(uGround==0){\n    float t=1.7/(-rd.y); vec2 g=rd.xz*t;\n    float dfar=exp(-t*.03);\n    float bump=.5+(fbm(g*.55)*.7+n2(g*3.1)*.3*dfar-.5)*(.35+.65*dfar);\n    vec3 shade=mix(vec3(.34,.33,.41),vec3(.55,.53,.62),sst(.25,.75,bump));\n    float rx=g.x-(1.5+.0009*g.y*g.y);\n    float road=smoothstep(2.8,2.2,abs(rx));\n    float track=exp(-pow((abs(rx)-1.)/.28,2.));\n    shade=mix(shade,shade*.84*(1.-.22*track),road);\n    shade*=1.-.18*exp(-pow((abs(rx)-2.9)/.5,2.));\n    vec2 sc=floor(g*38.);\n    float spk=step(.992,h21(sc))*(.5+.5*sin(T*3.+h21(sc+3.)*30.));\n    vec3 amb=mix(SHZ[uPal],PL[uPal*3+1],.25);\n    float lum=dot(amb,vec3(.33));\n    shade*=mix(vec3(1.),amb/max(max(amb.r,amb.g),amb.b),.55)*clamp(lum/.60,.22,1.25)*(.8+.35*uAct);\n    shade+=spk*vec3(.9,.95,1.)*exp(-t*.04)*.5;\n    col=mix(shade*expo,hz,1.-exp(-t*.010));\n  } else {\n    float t=2./(-rd.y); vec2 g=rd.xz*t;\n    vec3 n=seaNormal(g,t);\n    vec3 r=reflect(rd,n); r.y=abs(r.y)+.015;\n    vec3 rf=skyAt(normalize(r),dither);\n    float cosT=clamp(dot(-rd,n),0.,1.);\n    float F=.03+.97*pow(1.-cosT,5.);\n    vec3 body=vec3(.03,.05,.09)*(.4+dot(SHZ[uPal],vec3(1.)))*mix(1.,.3,uEye);\n    col=mix(body,rf,clamp(F*1.05,0.,1.));\n    col=mix(col,hz,1.-exp(-t*.006));\n  }\n  vec2 vq=gl_FragCoord.xy/R-.5;\n  col*=1.-.75*dot(vq,vq);\n  col=mix(col,col*col*(3.-2.*col),.35);\n  float gn=h21(gl_FragCoord.xy+fract(T*7.)*91.)-.5;\n  col+=gn*uGrain*(.35+.65*(1.-dot(clamp(col,0.,1.),vec3(.33))));\n  o=vec4(clamp(col,0.,1.),1.);\n}\n";
+  var FS = "#version 300 es\nprecision highp float;\nout vec4 o;\nuniform vec2 R, uMag;\nuniform float T, uYaw, uPitch, uTan, uPeak, uAct, uEye, uMagOn, uBurst, uBurstAge, uBurstX;\nuniform int uPal, uGround;\nuniform float uCore, uCoreX, uGrain, uHold;\n\nconst float PI = 3.14159265;\n// per palette: low / mid / high altitude colours\nconst vec3 PL[12] = vec3[12](\n  vec3(1.0,1.0,.88), vec3(.99,.60,.86), vec3(.62,.78,1.0),   // photo (from reference image): yellow-white, pink, cyan-white\n  vec3(.95,.42,.80), vec3(.30,1.0,.48), vec3(.95,.22,.28),   // physical: N2 pink, O green, O red\n  vec3(.45,.72,1.0), vec3(.45,.95,.95), vec3(.66,.46,.95),   // ice\n  vec3(1.0,.55,.35), vec3(.98,.25,.38), vec3(.72,.22,.62));  // ember\nconst vec3 SZ[4] = vec3[4](vec3(.41,.37,.50), vec3(.03,.05,.13), vec3(.04,.07,.19), vec3(.09,.04,.12));\nconst vec3 SHZ[4] = vec3[4](vec3(.455,.435,.57), vec3(.10,.12,.24), vec3(.13,.19,.35), vec3(.23,.10,.20));\n\nfloat h11(float n){ return fract(sin(n*12.9898)*43758.5453); }\nfloat h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }\nfloat n1(float x){ float i=floor(x),f=fract(x); f=f*f*(3.-2.*f); return mix(h11(i),h11(i+1.),f); }\nfloat n2(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);\n  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }\nfloat fbm(vec2 p){ float s=0.,a=.5; for(int i=0;i<4;i++){ s+=a*n2(p); p=p*2.03+vec2(5.2,1.3); a*=.5; } return s; }\nfloat sst(float a,float b,float x){ float t=clamp((x-a)/(b-a),0.,1.); return t*t*(3.-2.*t); }\n\nvec3 emitCol(float h){\n  float wl=1.-sst(95.,115.,h), wm=sst(90.,105.,h)*(1.-sst(170.,250.,h)), wh=sst(150.,240.,h);\n  float s=max(wl+wm+wh,1e-3);\n  return (wl*PL[uPal*3]+wm*PL[uPal*3+1]+wh*PL[uPal*3+2])/s;\n}\n\n// Volumetric curtains: march through horizontal slabs between 88 and 330 km altitude.\n// Each curtain is a thin sheet whose centre line wanders, leans and twists with height.\nvec3 aurora(vec3 rd, float dither){\n  if(rd.y<.015) return vec3(0.);\n  const int N=24;\n  float h0=88., h1=330., dh=(h1-h0)/float(N);\n  float Tm=T*(.55+.7*uAct), ry=max(rd.y,.05);\n  float sgL=max(8.,uPeak*.11), sgH=max(28.,uPeak*.40);\n  vec3 acc=vec3(0.);\n  for(int i=0;i<N;i++){\n    float h=h0+(float(i)+dither)*dh;\n    float s=h/rd.y;\n    if(s>1500.) break;\n    float d=h-uPeak;\n    float sg=d<0.?sgL:sgH;\n    float prof=exp(-d*d/(2.*sg*sg))+.30*exp(-pow((h-uPeak-85.)/75.,2.));\n\n    {\n      vec2 qp=rd.xz*s;\n      float sx=34.+.16*(h-90.), sz=40.;\n      float dxc=qp.x-uCoreX, dzc=qp.y-(335.+40.*sin(Tm*.04));\n      float body=exp(-dxc*dxc/(2.*sx*sx))*exp(-dzc*dzc/(2.*sz*sz));\n      float rays2=.15+1.1*pow(n1(qp.x*.26+Tm*.28),1.6);\n      rays2=mix(1.,rays2,exp(-s*.0025));\n      float hp=sst(86.,108.,h)*(1.-.60*sst(210.,330.,h));\n      vec3 pc=mix(vec3(1.,.90,.80),vec3(.96,.34,.80),sst(92.,150.,h));\n      float base2=exp(-(h-92.)/16.);                         // bright, near-white foot of the pillar\n      float fadeP=exp(-s*.0011)*sst(.015,.14,rd.y);\n      acc+=(pc*(1.+1.1*base2))*body*rays2*hp*uCore*2.8*fadeP*(dh/ry)*.0072;\n    }\n    if(prof<.02) continue;\n    vec2 q=rd.xz*s;                       // km east, km north\n    float dens=0.;\n    for(int k=0;k<3;k++){\n      float fk=float(k);\n      float zc=250.+fk*150.\n        +85.*sin(q.x*.0058+fk*2.1+Tm*.07)\n        +50.*sin(q.x*.0125-fk*1.3-Tm*.10+(h-100.)*.006)\n        +120.*(n1(q.x*.0040+fk*9.+Tm*.035)-.5)\n        +(h-120.)*(.5*sin(fk*1.7+Tm*.05)+.12)            // lean: top leans away from the base\n        +40.*uAct*sin(q.x*.028+h*.022+Tm*.17+fk);       // twist with height\n      zc+=uHold*75.*sin(q.x*.011-T*1.0+fk*1.7)*(.4+.6*sst(88.,260.,h));\n      zc+=uMagOn*.85*exp(-pow((q.x-uMag.x)/130.,2.))*(uMag.y-zc);      // cursor pulls the curtain\n      float bd=abs(q.x-uBurstX);\n      zc+=uBurst*38.*sin(bd*.02-uBurstAge*1.4)*exp(-bd*.003);          // substorm ripple\n      float dd=q.y-zc;\n      float w=9.+(h-100.)*.03+6.*n1(q.x*.02+fk*4.+Tm*.05);\n      float sheet=exp(-dd*dd/(2.*w*w))+.28*exp(-abs(dd)/(w*5.));\n      float rays=.35+pow(n1(q.x*.14+fk*17.+Tm*.25),1.6);\n      rays=mix(1.,rays,exp(-s*.0030));\n      float pat=sst(.22,.62,n1(q.x*.0046+fk*5.+Tm*.04));\n      dens+=sheet*rays*(.25+.95*pat)*(1.-.2*fk);\n    }\n    float densA=0.;\n    if(uPal==0){\n      float za=330.+q.x*.62+55.*sin(q.x*.004+Tm*.04)+(h-120.)*.25*sin(Tm*.03);\n      float da=q.y-za, wa=50.+(h-100.)*.05;\n      densA=0.6*(exp(-da*da/(2.*wa*wa))+.25*exp(-abs(da)/(wa*5.)))*(.55+.45*n1(q.x*.011+Tm*.03))*(.7+.3*n1(q.x*.12+Tm*.2));\n    }\n    dens*=1.+.7*uBurst*exp(-abs(q.x-uBurstX)*.003);\n    float fade=exp(-s*.0011)*sst(.015,.14,rd.y);\n    acc+=emitCol(h)*dens*prof*fade*(dh/ry)*.0072;\n    acc+=vec3(.70,.82,1.0)*densA*prof*fade*(dh/ry)*.0072;\n  }\n  return acc*(.16+1.2*uCore+.3*uHold)*.8;\n}\n\nfloat stars(vec3 rd){\n  float lat=asin(clamp(rd.y,-1.,1.)), lon=atan(rd.z,rd.x), s=0.;\n  for(int k=0;k<2;k++){\n    float rows=k==0?260.:110.;\n    float fl=lat/(PI*.5)*rows, ri=floor(fl);\n    float cols=max(6.,floor(rows*4.*cos((ri+.5)/rows*PI*.5)));\n    float fc=(lon/(2.*PI)+.5)*cols, ci=floor(fc);\n    vec2 id=vec2(ri,ci)+float(k)*31.;\n    float r=h21(id);\n    if(r<(k==0?.17:.05)){\n      vec2 f=vec2(fract(fl),fract(fc))-vec2(.2+.6*h21(id+7.),.2+.6*h21(id+13.));\n      float tw=.7+.3*sin(T*1.6+r*90.);\n      s+=smoothstep(k==0?.27:.32,0.,length(f))*tw*(k==0?.8:1.2)*(.6+.8*h21(id+3.));\n    }\n  }\n  return s;\n}\n\nvec3 skyAt(vec3 rd, float dither){\n  float ty=clamp(rd.y,0.,1.);\n  vec3 base=mix(SHZ[uPal],SZ[uPal],pow(ty,.55))*mix(1.,.10,uEye)*.42;\n  vec3 au=aurora(rd,dither);\n  au=1.-exp(-au*1.15);\n  au=mix(au,vec3(dot(au,vec3(.33)))*vec3(.70,1.,.85)*.75,uEye*.85);\n  float st=stars(rd);\n  vec3 c=1.-(1.-base)*(1.-au);\n  if(uPal==0){\n    float az=atan(rd.x,rd.z);\n    float lowE=1.-sst(0.,.30,rd.y);\n    float g1=exp(-pow((az-.12)/.30,2.))*lowE*lowE;\n    float g2=exp(-pow((az-1.0)/.34,2.))*(1.-sst(0.,.14,rd.y));\n    float g3=exp(-pow((az+.95)/.45,2.))*lowE*lowE*.35;\n    vec3 glw=(vec3(.99,1.,.96)*g1*1.25+vec3(.93,.97,.82)*g2*.8+vec3(.78,.84,.98)*g3)*(.55+.45*uAct)*mix(1.,.15,uEye)*.5;\n    c=1.-(1.-c)*(1.-glw);\n  }\n  float la=dot(au,vec3(.33));\n  c+=vec3(.92,.94,1.)*st*(1.-clamp(la*1.4,0.,.9))*mix(.9,.4,uEye)*(.35+.65*sst(0.,.2,rd.y));\n  return c;\n}\n\nvec3 seaNormal(vec2 p,float dist){\n  float t=T*.5;\n  vec2 q=p*.35+vec2(t*.2,0.);\n  float e=.05;\n  float c0=fbm(q)+.4*fbm(p*1.2-vec2(0.,t*.35));\n  float cx=fbm(q+vec2(e,0.))+.4*fbm((p+vec2(e,0.))*1.2-vec2(0.,t*.35));\n  float cz=fbm(q+vec2(0.,e))+.4*fbm((p+vec2(0.,e))*1.2-vec2(0.,t*.35));\n  float k=(.9*exp(-dist*.025)+.05)/e*.25;\n  return normalize(vec3(-(cx-c0)*k,1.,-(cz-c0)*k));\n}\n\nvoid main(){\n  vec2 p=(2.*gl_FragCoord.xy-R)/R.y;\n  vec3 rc=normalize(vec3(p*uTan,1.));\n  float cp=cos(uPitch), sp=sin(uPitch), cy=cos(uYaw), sy=sin(uYaw);\n  vec3 r1=vec3(rc.x, rc.y*cp+rc.z*sp, rc.z*cp-rc.y*sp);\n  vec3 rd=vec3(r1.x*cy+r1.z*sy, r1.y, r1.z*cy-r1.x*sy);\n  float dither=h21(gl_FragCoord.xy+fract(T)*13.);\n  float expo=mix(1.,.30,uEye);\n  vec3 hz=SHZ[uPal]*mix(1.,.10,uEye);\n  vec3 col;\n\n  if(rd.y>=0.||uGround==2){\n    col=skyAt(vec3(rd.x,abs(rd.y),rd.z),dither);\n  } else if(uGround==0){\n    float t=1.7/(-rd.y); vec2 g=rd.xz*t;\n    float dfar=exp(-t*.03);\n    float bump=.5+(fbm(g*.55)*.7+n2(g*3.1)*.3*dfar-.5)*(.35+.65*dfar);\n    vec3 shade=mix(vec3(.34,.33,.41),vec3(.55,.53,.62),sst(.25,.75,bump));\n    float rx=g.x-(1.5+.0009*g.y*g.y);\n    float road=smoothstep(2.8,2.2,abs(rx));\n    float track=exp(-pow((abs(rx)-1.)/.28,2.));\n    shade=mix(shade,shade*.84*(1.-.22*track),road);\n    shade*=1.-.18*exp(-pow((abs(rx)-2.9)/.5,2.));\n    vec2 sc=floor(g*38.);\n    float spk=step(.992,h21(sc))*(.5+.5*sin(T*3.+h21(sc+3.)*30.));\n    vec3 amb=mix(SHZ[uPal],PL[uPal*3+1],.25);\n    float lum=dot(amb,vec3(.33));\n    shade*=mix(vec3(1.),amb/max(max(amb.r,amb.g),amb.b),.55)*clamp(lum/.60,.22,1.25)*(.8+.35*uAct);\n    shade+=spk*vec3(.9,.95,1.)*exp(-t*.04)*.5;\n    col=mix(shade*expo,hz,1.-exp(-t*.010));\n  } else {\n    float t=2./(-rd.y); vec2 g=rd.xz*t;\n    vec3 n=seaNormal(g,t);\n    vec3 r=reflect(rd,n); r.y=abs(r.y)+.015;\n    vec3 rf=skyAt(normalize(r),dither);\n    float cosT=clamp(dot(-rd,n),0.,1.);\n    float F=.03+.97*pow(1.-cosT,5.);\n    vec3 body=vec3(.03,.05,.09)*(.4+dot(SHZ[uPal],vec3(1.)))*mix(1.,.3,uEye);\n    col=mix(body,rf,clamp(F*1.05,0.,1.));\n    col=mix(col,hz,1.-exp(-t*.006));\n  }\n  vec2 vq=gl_FragCoord.xy/R-.5;\n  col*=1.-.75*dot(vq,vq);\n  col=mix(col,col*col*(3.-2.*col),.35);\n  float gn=h21(gl_FragCoord.xy+fract(T*7.)*91.)-.5;\n  col+=gn*uGrain*(.35+.65*(1.-dot(clamp(col,0.,1.),vec3(.33))));\n  o=vec4(clamp(col,0.,1.),1.);\n}\n";
   var VS = '#version 300 es\nin vec2 a; void main(){ gl_Position = vec4(a,0.,1.); }';
 
   var cv = $('art'), ov = $('over'), ox = ov.getContext('2d');
@@ -75,18 +76,17 @@
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
   var loc = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   var U = {};
-  ['R', 'uMag', 'T', 'uYaw', 'uPitch', 'uTan', 'uPeak', 'uAct', 'uEye', 'uMagOn', 'uBurst', 'uBurstAge', 'uBurstX', 'uPal', 'uGround', 'uCore', 'uCoreX', 'uGrain', 'uVoice']
+  ['R', 'uMag', 'T', 'uYaw', 'uPitch', 'uTan', 'uPeak', 'uAct', 'uEye', 'uMagOn', 'uBurst', 'uBurstAge', 'uBurstX', 'uPal', 'uGround', 'uCore', 'uCoreX', 'uGrain', 'uHold']
     .forEach(function (n) { U[n] = gl.getUniformLocation(pr, n); });
 
   /* ---- scene state ---- */
   var CAM = { yaw: 0, pitch: .34, fov: 1.3 };
   var PEAK = 130;                       // km, typical 3 keV electrons
   var S = { time: test ? 6 : 0, life: .75, kick: 0, mag: [0, 300], magOn: 0, hover: null, burstAge: 99, burstX: 0,
-            coreX: 0, scale: .6, ft: 16, idle: 0, seenBright: false, W: 1, H: 1 };
-  var mic = null;
+            coreX: 0, hold: 0, holding: false, scale: .6, ft: 16, idle: 0, seenBright: false, W: 1, H: 1 };
   var dbg = null;
   if (/[?&]debug\b/.test(location.search)) { dbg = document.createElement('pre'); dbg.style.cssText = 'position:absolute;left:24px;bottom:14px;margin:0;font:12px/1.4 monospace;color:#f3b6e6;z-index:9;pointer-events:none'; document.body.appendChild(dbg); }
-  var tvm = /[?&]voice=([\d.]+)/.exec(location.search), TV = test && tvm ? +tvm[1] : null;
+  var thm = /[?&]hold=([\d.]+)/.exec(location.search), TH = test && thm ? +thm[1] : null;   // ?test&hold=0.9 fixes the hold level for screenshots
 
   function pointerRay(px, py) {
     var W = S.W, H = S.H, tanH = Math.tan(CAM.fov / 2), x = (2 * px - W) / H * tanH, y = (H - 2 * py) / H * tanH, n = Math.hypot(x, y, 1);
@@ -114,56 +114,68 @@
     if (lastP) S.kick += Math.hypot(p[0] - lastP[0], p[1] - lastP[1]) / S.H;
     lastP = p; S.hover = p;
   });
-  cv.addEventListener('pointerdown', function (e) { var p = local(e); lastP = p; S.hover = p; downAt = { x: p[0], y: p[1], t: performance.now() }; });
+  cv.addEventListener('pointerdown', function (e) { var p = local(e); lastP = p; S.hover = p; downAt = { x: p[0], y: p[1], t: performance.now() }; S.holding = true; });
   cv.addEventListener('pointerup', function (e) {
     var p = local(e);
     if (downAt && Math.hypot(p[0] - downAt.x, p[1] - downAt.y) < 12 && performance.now() - downAt.t < 450) {
       var q = planePoint(p[0], p[1]); burst(q ? q[0] : 0);
     }
-    downAt = null;
+    downAt = null; S.holding = false;
     if (e.pointerType !== 'mouse') { S.hover = null; lastP = null; }
   });
-  cv.addEventListener('pointerleave', function () { S.hover = null; lastP = null; });
+  cv.addEventListener('pointerleave', function () { S.hover = null; lastP = null; S.holding = false; });
+  cv.addEventListener('pointercancel', function () { S.holding = false; });
   cv.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' || e.key === ' ') { burst((Math.random() - .5) * 400); e.preventDefault(); }
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { S.kick += .15; S.hover = null; S.mag = [(e.key === 'ArrowLeft' ? -1 : 1) * 160, 300]; S.magOn = 1; }
   });
 
-  /* ---- input: microphone (opt-in; audio is analysed locally, never recorded or sent) ---- */
-  function toast(t) { var el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(function () { el.classList.remove('on'); }, 3600); }
-  function micOff() {
-    if (mic) { mic.stream.getTracks().forEach(function (t) { t.stop(); }); try { mic.ctx.close(); } catch (e) {} mic = null; }
-    $('micBtn').setAttribute('aria-pressed', 'false');
+  /* ---- input: music (tab audio shared through the browser; analysed locally, never recorded or sent) ---- */
+  function toast(t) { var el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(function () { el.classList.remove('on'); }, 7000); }
+  var mus = null, musEnv = 0;
+  function musicStop() {
+    if (mus) { mus.stream && mus.stream.getTracks().forEach(function (t) { t.stop(); }); try { mus.ctx.close(); } catch (e) {} mus = null; }
+    musEnv = 0; $('musBtn').setAttribute('aria-pressed', 'false');
   }
-  $('micBtn').addEventListener('click', function () {
-    if (mic) { micOff(); toast('声音已关闭 · Sound off'); return; }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('此设备不支持麦克风 · Microphone unavailable'); return; }
-    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (stream) {
+  function musicAttach(an, ctx, stream) {
+    mus = { an: an, ctx: ctx, stream: stream, bins: new Uint8Array(an.frequencyBinCount), peak: 30, floor: 255, silent: 0, warned: false, raw: 0, level: 0 };
+    $('musBtn').setAttribute('aria-pressed', 'true');
+  }
+  $('musBtn').addEventListener('click', function () {
+    if (mus) { musicStop(); toast('音乐已关闭 · Music off'); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) { toast('这个浏览器不能共享标签页音频，请用电脑上的 Chrome 或 Edge · Tab audio needs desktop Chrome or Edge'); return; }
+    toast('在弹出的窗口里选「Chrome 标签页」，选中正在播放音乐的那个，并勾选「同时分享标签页音频」 · Choose the Chrome tab that is playing music and tick “Also share tab audio”');
+    navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 1 }, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (stream) {
+      if (!stream.getAudioTracks().length) {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        toast('没有拿到声音：请选「Chrome 标签页」，并勾选「同时分享标签页音频」 · No audio: choose a Chrome tab and tick “Also share tab audio”'); return;
+      }
       var Ctx = window.AudioContext || window.webkitAudioContext, ctx = new Ctx(), an = ctx.createAnalyser();
-      an.fftSize = 1024; an.smoothingTimeConstant = .6; ctx.createMediaStreamSource(stream).connect(an);
-      mic = { stream: stream, ctx: ctx, an: an, buf: new Float32Array(an.fftSize), floor: -60, hold: 0, env: 0 };
-      $('micBtn').setAttribute('aria-pressed', 'true');
-      toast('轻声说话、哼一句、或者只是呼吸 · Whisper, hum, or simply breathe');
-    }).catch(function () { toast('没有拿到麦克风，仍可用指针 · No microphone, pointer still works'); });
+      an.fftSize = 2048; an.smoothingTimeConstant = .5;
+      ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks())).connect(an);   // analysed only; never connected to the speakers
+      musicAttach(an, ctx, stream);
+      stream.getAudioTracks()[0].addEventListener('ended', function () { musicStop(); toast('分享已结束 · Sharing ended'); });
+      toast('已连接。放一首歌，光会随着低频的节奏呼吸 · Connected. Play a song and the light will breathe with its low end');
+    }).catch(function () { toast('已取消 · Cancelled'); });
   });
-  function micStep(dt) {
-    if (!mic) return 0;
-    mic.an.getFloatTimeDomainData(mic.buf);
-    var sum = 0; for (var i = 0; i < mic.buf.length; i++) sum += mic.buf[i] * mic.buf[i];
-    return micLevel(Math.sqrt(sum / mic.buf.length), dt);
-  }
-  // Level in dB above the room's noise floor, so a whisper and a breath both register.
-  function micLevel(rms, dt) {
-    var db = 20 * Math.log(Math.max(rms, 1e-5)) / Math.LN10;
-    // floor follows quiet moments down quickly and creeps up very slowly, so speaking does not raise it
-    mic.floor += (db - mic.floor) * Math.min(dt * (db < mic.floor ? 3 : .01), 1);
-    mic.floor = Math.max(-70, Math.min(-45, mic.floor));
-    mic.db = db;
-    var target = Math.max(0, Math.min(1, (db - mic.floor - 4) / 28));
-    // peak hold: the gaps between syllables should not drop the light
-    mic.hold = Math.max(target, mic.hold - dt * 1.2);
-    mic.env += (mic.hold - mic.env) * Math.min(dt * (mic.hold > mic.env ? 2.5 : .5), 1);
-    return mic.env;
+  // Low-frequency energy (kick and bass), normalised against its own recent range, then softened into an envelope.
+  function musicStep(dt) {
+    if (!mus) return 0;
+    mus.an.getByteFrequencyData(mus.bins);
+    var binHz = mus.ctx.sampleRate / mus.an.fftSize, i, n, bass = 0, low = 0;
+    var b0 = Math.max(1, Math.round(40 / binHz)), b1 = Math.round(160 / binHz), b2 = Math.round(500 / binHz);
+    for (i = b0, n = 0; i <= b1; i++, n++) bass += mus.bins[i]; bass /= Math.max(1, n);
+    for (i = b1 + 1, n = 0; i <= b2; i++, n++) low += mus.bins[i]; low /= Math.max(1, n);
+    var cur = .75 * bass + .25 * low; mus.raw = cur;
+    mus.peak = Math.max(cur, mus.peak - dt * 6);
+    mus.floor = Math.min(cur, mus.floor + dt * 4);
+    var level = mus.peak < 25 ? 0 : Math.pow(Math.max(0, Math.min(1, (cur - mus.floor) / Math.max(mus.peak - mus.floor, 40))), 1.3);
+    mus.level = level;
+    // if nothing but silence arrives for a while, say so: some protected players share a silent tab
+    if (mus.peak < 12) { mus.silent += dt; if (mus.silent > 6 && !mus.warned) { mus.warned = true; toast('已连接，但标签页里没有声音：可能还没播放，或这个播放器的声音受保护 · Connected, but the tab is silent: nothing playing, or the player blocks capture'); } }
+    else mus.silent = 0;
+    musEnv += (level - musEnv) * Math.min(dt * (level > musEnv ? 9 : 2.2), 1);
+    return musEnv;
   }
 
   /* ---- fullscreen / save ---- */
@@ -239,12 +251,14 @@
     if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
     gl.viewport(0, 0, cv.width, cv.height);
 
-    var micIn = micStep(dt);
-    if (test && TV !== null) micIn = TV;
-    if (dbg) dbg.textContent = mic ? 'dB ' + mic.db.toFixed(1) + '  floor ' + mic.floor.toFixed(1) + '  level ' + micIn.toFixed(2) + '  life ' + S.life.toFixed(2) : 'mic off';
-    $('micDot').style.opacity = mic || TV !== null ? (.25 + .75 * micIn).toFixed(2) : 0;
+    // hold: pressing and staying still draws the light closer. It gathers over ~3 s and lets go over ~5 s, like a breath.
+    S.hold += ((S.holding ? 1 : 0) - S.hold) * Math.min(dt * (S.holding ? .6 : .3), 1);
+    var hold = TH !== null ? TH : S.hold;
+    var mv = musicStep(dt);
+    hold = Math.max(hold, mv * .9);
+    if (dbg) dbg.textContent = mus ? 'music raw ' + mus.raw.toFixed(1) + '  peak ' + mus.peak.toFixed(1) + '  floor ' + mus.floor.toFixed(1) + '  level ' + mv.toFixed(2) : 'music off';
     // life: movement and sound feed it, stillness lets it fade
-    S.life = Math.max(.07, Math.min(1, S.life + S.kick * .55 + micIn * dt * .3 - dt * .065));
+    S.life = Math.max(.07, Math.min(1, S.life + S.kick * .55 + hold * dt * .22 - dt * .065));
     S.kick = 0;
 
     var want = 0;
@@ -252,19 +266,19 @@
     S.magOn += (want - S.magOn) * Math.min(dt * 3, 1);
     // the bright core drifts toward where you are, slowly
     var tx = want ? Math.max(-260, Math.min(260, S.mag[0] * .55)) : 70 * Math.sin(S.time * .05);
-    S.coreX += (tx - S.coreX) * Math.min(dt * .5, 1);
+    S.coreX += (tx - S.coreX) * Math.min(dt * (.5 + .9 * hold), 1);
     S.time += dt * (reduce ? .3 : 1);
     S.burstAge += dt;
     var amp = S.burstAge < 30 ? Math.min(1, S.burstAge / 2.5) * Math.exp(-S.burstAge * .3) * 2 : 0;   // swells in over ~2.5 s, then ebbs
 
     gl.uniform2f(U.R, cv.width, cv.height); gl.uniform1f(U.T, S.time);
     gl.uniform1f(U.uYaw, CAM.yaw); gl.uniform1f(U.uPitch, CAM.pitch); gl.uniform1f(U.uTan, Math.tan(CAM.fov / 2));
-    gl.uniform1f(U.uPeak, PEAK); gl.uniform1f(U.uAct, .15 + 1.0 * S.life + .35 * micIn); gl.uniform1f(U.uVoice, micIn);
+    gl.uniform1f(U.uPeak, PEAK); gl.uniform1f(U.uAct, .15 + 1.0 * S.life + .3 * hold); gl.uniform1f(U.uHold, hold);
     gl.uniform1f(U.uEye, 0);
     gl.uniform2f(U.uMag, S.mag[0], S.mag[1]); gl.uniform1f(U.uMagOn, S.magOn);
     gl.uniform1f(U.uBurst, amp); gl.uniform1f(U.uBurstAge, S.burstAge); gl.uniform1f(U.uBurstX, S.burstX);
     gl.uniform1i(U.uPal, 0); gl.uniform1i(U.uGround, 2);
-    gl.uniform1f(U.uCore, Math.pow(S.life, 1.3) * (1 + .2 * micIn)); gl.uniform1f(U.uCoreX, S.coreX); gl.uniform1f(U.uGrain, .05);
+    gl.uniform1f(U.uCore, Math.pow(S.life, 1.3) * (1 + .25 * hold)); gl.uniform1f(U.uCoreX, S.coreX); gl.uniform1f(U.uGrain, .05);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     drawOverlay(W, H, d);
   }
@@ -280,7 +294,7 @@
   }
   if (test) { S.scale = .5; var m = /[?&]life=([\d.]+)/.exec(location.search); if (m) S.life = +m[1]; tA = 3; }
   requestAnimationFrame(frame);
-  window.__aurora = S;
+  window.__aurora = S; window.__musicAttach = musicAttach; window.__musicEnv = function () { return musEnv; };
 })();
 </script>
 </body>
