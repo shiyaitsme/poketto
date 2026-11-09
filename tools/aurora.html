@@ -308,11 +308,18 @@ vec3 aurora(vec3 rd, float dither){
       float pat=sst(.22,.62,n1(q.x*.0046+fk*5.+Tm*.04));
       dens+=sheet*rays*(.25+.95*pat)*(1.-.2*fk);
     }
+    float densA=0.;
+    if(uPal==0){
+      float za=330.+q.x*.62+55.*sin(q.x*.004+Tm*.04)+(h-120.)*.25*sin(Tm*.03);
+      float da=q.y-za, wa=50.+(h-100.)*.05;
+      densA=1.9*(exp(-da*da/(2.*wa*wa))+.25*exp(-abs(da)/(wa*5.)))*(.55+.45*n1(q.x*.011+Tm*.03))*(.7+.3*n1(q.x*.12+Tm*.2));
+    }
     dens*=1.+1.6*uBurst*exp(-abs(q.x-uBurstX)*.003);
     float fade=exp(-s*.0011)*sst(.015,.14,rd.y);
     acc+=emitCol(h)*dens*prof*fade*(dh/ry)*.0072;
+    acc+=vec3(.70,.82,1.0)*densA*prof*fade*(dh/ry)*.0072;
   }
-  return acc*(.55+.75*uAct)*(uPal==0?1.3:1.);
+  return acc*(.55+.75*uAct)*(uPal==0?1.5:1.);
 }
 
 float stars(vec3 rd){
@@ -324,10 +331,10 @@ float stars(vec3 rd){
     float fc=(lon/(2.*PI)+.5)*cols, ci=floor(fc);
     vec2 id=vec2(ri,ci)+float(k)*31.;
     float r=h21(id);
-    if(r<(k==0?.10:.035)){
+    if(r<(k==0?.17:.05)){
       vec2 f=vec2(fract(fl),fract(fc))-vec2(.2+.6*h21(id+7.),.2+.6*h21(id+13.));
       float tw=.7+.3*sin(T*1.6+r*90.);
-      s+=smoothstep(k==0?.22:.3,0.,length(f))*tw*(k==0?.6:1.)*(.6+.8*h21(id+3.));
+      s+=smoothstep(k==0?.27:.32,0.,length(f))*tw*(k==0?.8:1.2)*(.6+.8*h21(id+3.));
     }
   }
   return s;
@@ -341,6 +348,15 @@ vec3 skyAt(vec3 rd, float dither){
   au=mix(au,vec3(dot(au,vec3(.33)))*vec3(.70,1.,.85)*.75,uEye*.85);
   float st=stars(rd);
   vec3 c=1.-(1.-base)*(1.-au);
+  if(uPal==0){
+    float az=atan(rd.x,rd.z);
+    float lowE=1.-sst(0.,.30,rd.y);
+    float g1=exp(-pow((az-.12)/.30,2.))*lowE*lowE;
+    float g2=exp(-pow((az-1.0)/.34,2.))*(1.-sst(0.,.14,rd.y));
+    float g3=exp(-pow((az+.95)/.45,2.))*lowE*lowE*.35;
+    vec3 glw=(vec3(.99,1.,.96)*g1*1.25+vec3(.93,.97,.82)*g2*.8+vec3(.78,.84,.98)*g3)*(.55+.45*uAct)*mix(1.,.15,uEye);
+    c=1.-(1.-c)*(1.-glw);
+  }
   float la=dot(au,vec3(.33));
   c+=vec3(.92,.94,1.)*st*(1.-clamp(la*1.4,0.,.9))*mix(.9,.4,uEye)*(.35+.65*sst(0.,.2,rd.y));
   return c;
