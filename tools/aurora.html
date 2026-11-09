@@ -180,7 +180,7 @@
 
   <section class="notes">
     <div class="pk-h2"><small>The model</small>关于这个模型</div>
-    <p class="pk-note">这是教学示意图，不是极光预报，也不是粒子模拟。<b>第一部分的光幕是体渲染出来的艺术画面</b>：帘子的形状由多层正弦与噪声叠出，不由物理方程算出；只有发光高度和分层的颜色顺序按第二部分的规律来设。树木是程序随机生成的，地面和海面的反光是示意。「照片色」是照着一张参考照片目测取色，不是测量值。</p>
+    <p class="pk-note">这是教学示意图，不是极光预报，也不是粒子模拟。<b>第一部分的光幕是体渲染出来的艺术画面</b>：帘子的形状由多层正弦与噪声叠出，不由物理方程算出；只有发光高度和分层的颜色顺序按第二部分的规律来设。树木是程序随机生成的，地面和海面的反光是示意。「照片色」取自参考照片各区域的实测中位色（天空底色约 #7c798f，青白光带约 #c7d7ef，粉色核心约 #c3a0c7，雪地约 #767388），光幕的形状和分布并不是照片的复刻。</p>
     <p class="pk-note">磁场剖面用偶极场，磁力线满足 r = L·cos²λ（r 以地球半径为单位，λ 是磁纬，L 是赤道上离地心的距离）。落点纬度由 cos²λ = 1/L 算出，L = 6 时约 66°，与极光椭圆带的位置一致。夜侧的磁力线被拉长了，日侧的磁层压缩画得示意化，磁层边界的形状、粒子速度和数量都没有按比例，也没有画出磁重联的细节，只表示「一部分粒子从磁尾进入」这一结论。</p>
     <p class="pk-note">能量与高度的对应取一张近似表：约 0.1 keV 在 250 km，1 keV 在 160 km，10 keV 在 110 km，100 keV 在 85 km，中间按对数插值。颜色权重（红光在约 150 km 以上、绿光约 100 到 200 km、粉紫在约 100 km 以下）也是教学用的粗略分段。真实极光的亮度分布受粒子能谱、大气成分和太阳活动影响，不同事件差别很大。</p>
     <p class="pk-note">页面用本机 WebGL2 绘制艺术画面，会根据画面流畅度自动降低渲染分辨率；打不开时只显示提示，原理部分仍可使用。</p>
@@ -249,12 +249,12 @@ uniform int uPal, uGround;
 const float PI = 3.14159265;
 // per palette: low / mid / high altitude colours
 const vec3 PL[12] = vec3[12](
-  vec3(.90,.98,.55), vec3(.96,.46,.80), vec3(.45,.90,.98),   // photo: yellow-white, pink, cyan-white
+  vec3(1.0,1.0,.88), vec3(.99,.60,.86), vec3(.62,.78,1.0),   // photo (from reference image): yellow-white, pink, cyan-white
   vec3(.95,.42,.80), vec3(.30,1.0,.48), vec3(.95,.22,.28),   // physical: N2 pink, O green, O red
   vec3(.45,.72,1.0), vec3(.45,.95,.95), vec3(.66,.46,.95),   // ice
   vec3(1.0,.55,.35), vec3(.98,.25,.38), vec3(.72,.22,.62));  // ember
-const vec3 SZ[4] = vec3[4](vec3(.38,.31,.54), vec3(.03,.05,.13), vec3(.04,.07,.19), vec3(.09,.04,.12));
-const vec3 SHZ[4] = vec3[4](vec3(.60,.50,.71), vec3(.10,.12,.24), vec3(.13,.19,.35), vec3(.23,.10,.20));
+const vec3 SZ[4] = vec3[4](vec3(.41,.37,.50), vec3(.03,.05,.13), vec3(.04,.07,.19), vec3(.09,.04,.12));
+const vec3 SHZ[4] = vec3[4](vec3(.455,.435,.57), vec3(.10,.12,.24), vec3(.13,.19,.35), vec3(.23,.10,.20));
 
 float h11(float n){ return fract(sin(n*12.9898)*43758.5453); }
 float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
@@ -374,7 +374,7 @@ void main(){
     float t=1.7/(-rd.y); vec2 g=rd.xz*t;
     float dfar=exp(-t*.03);
     float bump=.5+(fbm(g*.55)*.7+n2(g*3.1)*.3*dfar-.5)*(.35+.65*dfar);
-    vec3 shade=mix(vec3(.70,.66,.80),vec3(.92,.89,.97),sst(.25,.75,bump));
+    vec3 shade=mix(vec3(.34,.33,.41),vec3(.55,.53,.62),sst(.25,.75,bump));
     float rx=g.x-(1.5+.0009*g.y*g.y);
     float road=smoothstep(2.8,2.2,abs(rx));
     float track=exp(-pow((abs(rx)-1.)/.28,2.));
@@ -468,7 +468,7 @@ void main(){
   var strips = null;
   function buildStrips() {
     strips = {
-      far: makeStrip({ seed: 11, count: 2600, clump: .8, h0: 26, h1: 60, base: HZ + 2, spread: 4, col: 'rgb(62,54,92)' }),
+      far: makeStrip({ seed: 11, count: 2600, clump: .8, h0: 26, h1: 60, base: HZ + 2, spread: 4, col: 'rgb(34,30,50)' }),
       mid: makeStrip({ seed: 23, count: 800, clump: .7, h0: 60, h1: 135, base: HZ + 10, spread: 10, col: 'rgb(22,24,42)', bare: .05 }),
       near: makeStrip({ seed: 37, count: 60, clump: .2, h0: 130, h1: 215, base: HZ + 36, spread: 12, col: 'rgb(8,9,16)', snow: true, bare: .12 })
     };
@@ -570,7 +570,7 @@ void main(){
       var tanH = Math.tan(cam.fov / 2), cp = Math.cos(cam.pitch), focal = H / 2 / tanH;
       var hy = H / 2 * (1 + Math.tan(cam.pitch) / tanH);
       var perRad = SW / (2 * Math.PI), STEP = 3;
-      var layers = art.ground === 0 ? [['far', .8, 1], ['mid', .96, 1], ['near', 1, 1]] : [];
+      var layers = art.ground === 0 ? [['far', .9, 1], ['mid', .98, 1], ['near', 1, 1]] : [];
       if (art.ground === 1) {
         var rh = Math.max(6, focal * .035);
         tx.fillStyle = 'rgba(46,38,76,.8)'; tx.beginPath(); tx.moveTo(0, hy + 1);
