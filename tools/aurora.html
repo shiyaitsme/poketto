@@ -14,7 +14,9 @@
   .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .stage.art { height: clamp(340px, 56vh, 600px); }
   .stage.mag { height: clamp(300px, 46vh, 460px); }
-  #art { cursor: crosshair; }
+  #art { cursor: grab; }
+  #art:active { cursor: grabbing; }
+  #trees { pointer-events: none; }
   canvas:focus-visible { outline: 2px solid var(--leaf); outline-offset: -4px; }
   .badge, .hint { position: absolute; z-index: 5; margin: 0; pointer-events: none; padding: 2px 8px; background: #efeee9; color: var(--ink); border-radius: 3px;
     font-family: var(--body); font-weight: 700; letter-spacing: .02em; text-transform: none; box-shadow: 0 0 0 1px rgba(29,30,27,.22); }
@@ -73,48 +75,54 @@
   <!-- ============ Part 1: show ============ -->
   <section class="sec" aria-label="演示">
     <div class="sec-head">
-      <div class="pk-h2"><small>Part 1 · Show</small>演示：一块可以牵引的夜空</div>
+      <div class="pk-h2"><small>Part 1 · Show</small>演示：站在雪地里抬头看</div>
     </div>
     <div class="stage art pk-br" id="artStage">
-      <canvas id="art" tabindex="0" role="img" aria-label="极光动画。用鼠标或手指在画面里移动来牵引光幕，点击或按回车触发地磁暴，方向键也可以移动。"></canvas>
+      <canvas id="art" tabindex="0" role="img" aria-label="三维极光动画。拖动环顾四周，滚轮缩放，鼠标悬停时光幕会被牵向光标，点击触发亚暴，方向键也可以转动视角。"></canvas>
+      <canvas id="trees" aria-hidden="true"></canvas>
       <p class="badge pk-label">艺术示意</p>
-      <p class="hint pk-label">移动牵引光幕 · 点击触发地磁暴</p>
+      <p class="hint pk-label">拖动环顾 · 滚轮缩放 · 悬停牵引光幕 · 点击引爆亚暴</p>
       <div class="fallback" id="artFallback" hidden><p>这个浏览器打不开 WebGL2，看不到动态极光。可以换一个新一点的浏览器再试。</p></div>
     </div>
     <div class="ctrl pk-br pk-veil">
       <div class="group wide">
         <div class="pk-h2"><small>Palette</small>色板</div>
         <div class="chips" id="palChips" role="group" aria-label="色板">
-          <button class="pk-chip zh" type="button" data-pal="0" aria-pressed="true">粉紫（照片里的）</button>
-          <button class="pk-chip zh" type="button" data-pal="1" aria-pressed="false">物理配色（按高度）</button>
+          <button class="pk-chip zh" type="button" data-pal="0" aria-pressed="true">照片色</button>
+          <button class="pk-chip zh" type="button" data-pal="1" aria-pressed="false">物理配色</button>
           <button class="pk-chip zh" type="button" data-pal="2" aria-pressed="false">冰蓝</button>
-          <button class="pk-chip zh" type="button" data-pal="3" aria-pressed="false">赤红</button>
+          <button class="pk-chip zh" type="button" data-pal="3" aria-pressed="false">余烬</button>
         </div>
       </div>
-      <div class="group">
-        <p class="lab">亮度 <strong id="brightLab">1.00</strong></p>
-        <input class="pk-range" type="range" id="bright" min="0.3" max="2" step="0.01" value="1" aria-label="亮度">
-      </div>
-      <div class="group">
-        <p class="lab">流速 <strong id="speedLab">0.60</strong></p>
-        <input class="pk-range" type="range" id="speed" min="0" max="3" step="0.01" value="0.6" aria-label="流速">
-      </div>
-      <div class="group">
-        <p class="lab">光幕层数 <strong id="layersLab">3</strong></p>
-        <input class="pk-range" type="range" id="layers" min="1" max="4" step="1" value="3" aria-label="光幕层数">
-      </div>
       <div class="group wide">
-        <div class="pk-h2"><small>Ground</small>地面</div>
-        <div class="chips" id="groundChips" role="group" aria-label="地面">
+        <div class="pk-h2"><small>Ground</small>脚下</div>
+        <div class="chips" id="groundChips" role="group" aria-label="脚下的地面">
           <button class="pk-chip zh" type="button" data-ground="0" aria-pressed="true">雪地森林</button>
           <button class="pk-chip zh" type="button" data-ground="1" aria-pressed="false">海面倒影</button>
           <button class="pk-chip zh" type="button" data-ground="2" aria-pressed="false">纯夜空</button>
-          <button class="pk-chip zh" type="button" id="stormBtn">地磁暴</button>
+        </div>
+      </div>
+      <div class="group wide">
+        <p class="lab">粒子能量 <strong id="energyALab">3 keV</strong>，决定发光带的高度和颜色</p>
+        <input class="pk-range" type="range" id="energyA" min="0" max="1" step="0.001" value="0.5" aria-label="入射电子能量，对数刻度">
+      </div>
+      <div class="group">
+        <p class="lab">太阳风强度 <strong id="actLab">0.80</strong></p>
+        <input class="pk-range" type="range" id="act" min="0" max="1.5" step="0.01" value="0.8" aria-label="太阳风强度">
+      </div>
+      <div class="group wide">
+        <p class="lab">肉眼 ⇄ 相机长曝光 <strong id="camLab">1.00</strong></p>
+        <input class="pk-range" type="range" id="cam" min="0" max="1" step="0.01" value="1" aria-label="从肉眼看到的样子，过渡到相机长曝光的样子">
+      </div>
+      <div class="group wide">
+        <div class="chips">
+          <button class="pk-chip zh" type="button" id="stormBtn">引爆亚暴</button>
+          <button class="pk-chip zh" type="button" id="resetBtn">复位视角</button>
           <button class="pk-chip zh" type="button" id="shotBtn">保存截图</button>
         </div>
       </div>
     </div>
-    <p class="pk-note">这里的光幕是用噪声函数画出来的，<b>只借用了真实极光的外形特征</b>：下缘清晰、向上渐隐，竖直的光柱，以及下粉、中绿、上红的分层。想知道这些特征从哪来，往下看第二部分。</p>
+    <p class="pk-note"><b>这是个三维场景。</b>光幕是悬在 90 到 330 km 高空的一片片帘子，画面沿视线逐层累加亮度，所以拖动视角时有真实的透视，抬头能看到头顶的弧形。<b>试试这几件事：</b>把鼠标悬停在光幕上，它会被牵向光标，类似磁场对带电粒子的作用。点一下天空引爆亚暴，一道波纹会沿光幕扩散。拖动「肉眼 ⇄ 相机」，看为什么照片里的极光比亲眼看到的更鲜艳。拖动「粒子能量」，发光带会上下移动，颜色跟着变，原理见下方第二部分。</p>
   </section>
 
   <hr class="pk-rule">
@@ -165,17 +173,17 @@
     <div class="why">
       <p class="pk-note"><b>为什么下缘清晰、上面渐隐？</b>粒子往下冲，空气越来越密。能量一定的粒子会在差不多的深度停下来，所以亮度在那里最强，再往下几乎没有；往上没有被撞的空气越来越少，亮度慢慢变弱。拖上面的能量滑条，能看到亮带随之上下移动。</p>
       <p class="pk-note"><b>为什么是竖直的光柱？</b>带电粒子会沿着磁力线绕圈前进。磁力线在极区附近接近竖直，所以发光的轨迹也是一条条竖线。第一部分里的竖纹就是模仿这一点。</p>
-      <p class="pk-note"><b>为什么颜色不同？</b>氧原子在约 100 到 250 km 发 557.7 nm 的<span class="pk-hl">绿光</span>，这是最常见的极光颜色。更高处空气稀薄，氧原子可以慢慢放出 630.0 nm 的<span class="pk-hl">红光</span>，这种红光放出得很慢，低处的原子在放光前就先被别的粒子碰掉了能量。约 100 km 以下，氮分子贡献偏<span class="pk-hl">粉紫</span>的光，常见于光幕的下缘。你给的那张照片，下缘的粉色就是这一层。</p>
+      <p class="pk-note"><b>为什么颜色不同？</b>氧原子在约 100 到 250 km 发 557.7 nm 的<span class="pk-hl">绿光</span>，这是最常见的极光颜色。更高处空气稀薄，氧原子可以慢慢放出 630.0 nm 的<span class="pk-hl">红光</span>，这种红光放出得很慢，低处的原子在放光前就先被别的粒子碰掉了能量。约 100 km 以下，氮分子贡献偏<span class="pk-hl">粉紫</span>的光，常见于光幕的下缘。第一部分的「粒子能量」滑条，就是在改这里的高度，可以直接对照。另外要注意，真实照片里的颜色还和相机的曝光、白平衡有关，不一定和这套分层一一对应。</p>
       <p class="pk-note"><b>为什么只在高纬度？</b>地球磁场把粒子引向两个磁极，粒子落点在磁纬约 65° 到 70° 的一圈环带上，叫极光椭圆带。太阳活动强的时候，这圈环带会向低纬扩大，更远的地方也能看见。</p>
     </div>
   </section>
 
   <section class="notes">
     <div class="pk-h2"><small>The model</small>关于这个模型</div>
-    <p class="pk-note">这是教学示意图，不是极光预报，也不是粒子模拟。<b>第一部分的光幕是噪声画出来的艺术画面</b>，不由物理方程算出；只有分层的颜色顺序按第二部分的规律来设。</p>
+    <p class="pk-note">这是教学示意图，不是极光预报，也不是粒子模拟。<b>第一部分的光幕是体渲染出来的艺术画面</b>：帘子的形状由多层正弦与噪声叠出，不由物理方程算出；只有发光高度和分层的颜色顺序按第二部分的规律来设。树木是程序随机生成的，地面和海面的反光是示意。「照片色」取自参考照片各区域的实测中位色（天空底色约 #7c798f，青白光带约 #c7d7ef，粉色核心约 #c3a0c7，雪地约 #767388），光幕的形状和分布并不是照片的复刻。</p>
     <p class="pk-note">磁场剖面用偶极场，磁力线满足 r = L·cos²λ（r 以地球半径为单位，λ 是磁纬，L 是赤道上离地心的距离）。落点纬度由 cos²λ = 1/L 算出，L = 6 时约 66°，与极光椭圆带的位置一致。夜侧的磁力线被拉长了，日侧的磁层压缩画得示意化，磁层边界的形状、粒子速度和数量都没有按比例，也没有画出磁重联的细节，只表示「一部分粒子从磁尾进入」这一结论。</p>
     <p class="pk-note">能量与高度的对应取一张近似表：约 0.1 keV 在 250 km，1 keV 在 160 km，10 keV 在 110 km，100 keV 在 85 km，中间按对数插值。颜色权重（红光在约 150 km 以上、绿光约 100 到 200 km、粉紫在约 100 km 以下）也是教学用的粗略分段。真实极光的亮度分布受粒子能谱、大气成分和太阳活动影响，不同事件差别很大。</p>
-    <p class="pk-note">页面用本机 WebGL2 绘制艺术画面；打不开时只显示提示，原理部分仍可使用。</p>
+    <p class="pk-note">页面用本机 WebGL2 绘制艺术画面，会根据画面流畅度自动降低渲染分辨率；打不开时只显示提示，原理部分仍可使用。</p>
   </section>
 
   <footer class="pk-foot">
@@ -210,142 +218,266 @@
   }
 
   /* =====================================================
-     Part 1 · WebGL2 aurora (artistic noise model)
+     Shared state: particle energy drives both the demo and the altitude profile
+     ===================================================== */
+  var ETAB = [[.1, 250], [.5, 190], [1, 160], [3, 130], [10, 110], [30, 97], [100, 85]];
+  function altOf(E) {
+    var le = Math.log(E);
+    for (var i = 1; i < ETAB.length; i++) if (E <= ETAB[i][0]) {
+      var a = ETAB[i - 1], b = ETAB[i], t = (le - Math.log(a[0])) / (Math.log(b[0]) - Math.log(a[0]));
+      return a[1] + (b[1] - a[1]) * t;
+    }
+    return ETAB[ETAB.length - 1][1];
+  }
+  var Energy = {
+    E: 3, subs: [],
+    set: function (v) { this.E = Math.max(.1, Math.min(100, v)); var self = this; this.subs.forEach(function (f) { f(self.E); }); }
+  };
+  function eToSlider(E) { return (Math.log10(E) + 1) / 3; }
+  function sliderToE(v) { return Math.pow(10, v * 3 - 1); }
+
+  /* =====================================================
+     Part 1 · volumetric aurora (WebGL2) + procedural forest (2D canvas)
      ===================================================== */
   var FS = `#version 300 es
 precision highp float;
 out vec4 o;
-uniform vec2 R; uniform float T; uniform vec2 M; uniform float storm;
-uniform float bright, starDen; uniform int layers, ground, pal;
+uniform vec2 R, uMag;
+uniform float T, uYaw, uPitch, uTan, uPeak, uAct, uEye, uMagOn, uBurst, uBurstAge, uBurstX;
+uniform int uPal, uGround;
 
-// per palette: lower edge, mid, high, top
-vec3 PAL[16] = vec3[16](
-  vec3(.85,.95,.45), vec3(.98,.42,.78), vec3(.70,.96,.96), vec3(.42,.28,.85),
-  vec3(.95,.40,.75), vec3(.30,1.0,.45), vec3(.35,.95,.62), vec3(.95,.22,.28),
-  vec3(.50,.90,1.0), vec3(.30,.60,1.0), vec3(.60,.80,1.0), vec3(.50,.30,.90),
-  vec3(1.0,.60,.30), vec3(.95,.15,.25), vec3(.90,.30,.60), vec3(.50,.10,.50));
+const float PI = 3.14159265;
+// per palette: low / mid / high altitude colours
+const vec3 PL[12] = vec3[12](
+  vec3(1.0,1.0,.88), vec3(.99,.60,.86), vec3(.62,.78,1.0),   // photo (from reference image): yellow-white, pink, cyan-white
+  vec3(.95,.42,.80), vec3(.30,1.0,.48), vec3(.95,.22,.28),   // physical: N2 pink, O green, O red
+  vec3(.45,.72,1.0), vec3(.45,.95,.95), vec3(.66,.46,.95),   // ice
+  vec3(1.0,.55,.35), vec3(.98,.25,.38), vec3(.72,.22,.62));  // ember
+const vec3 SZ[4] = vec3[4](vec3(.41,.37,.50), vec3(.03,.05,.13), vec3(.04,.07,.19), vec3(.09,.04,.12));
+const vec3 SHZ[4] = vec3[4](vec3(.455,.435,.57), vec3(.10,.12,.24), vec3(.13,.19,.35), vec3(.23,.10,.20));
 
-float h21(vec2 p){ vec3 q=fract(vec3(p.xyx)*.1031); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }
-float vn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*f*(f*(f*6.-15.)+10.);
-  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+1.),f.x),f.y); }
-float fbm(vec2 p){ float s=0.,a=.5; mat2 m=mat2(.8,.6,-.6,.8);
-  for(int i=0;i<5;i++){ s+=a*vn(p); p=m*p*2.02+3.7; a*=.5; } return s; }
+float h11(float n){ return fract(sin(n*12.9898)*43758.5453); }
+float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float n1(float x){ float i=floor(x),f=fract(x); f=f*f*(3.-2.*f); return mix(h11(i),h11(i+1.),f); }
+float n2(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }
+float fbm(vec2 p){ float s=0.,a=.5; for(int i=0;i<4;i++){ s+=a*n2(p); p=p*2.03+vec2(5.2,1.3); a*=.5; } return s; }
+float sst(float a,float b,float x){ float t=clamp((x-a)/(b-a),0.,1.); return t*t*(3.-2.*t); }
 
-vec3 aurora(vec2 p, float t){
-  vec3 c0=PAL[pal*4], c1=PAL[pal*4+1], c2=PAL[pal*4+2], c3=PAL[pal*4+3];
+vec3 emitCol(float h){
+  float wl=1.-sst(95.,115.,h), wm=sst(90.,105.,h)*(1.-sst(170.,250.,h)), wh=sst(150.,240.,h);
+  float s=max(wl+wm+wh,1e-3);
+  return (wl*PL[uPal*3]+wm*PL[uPal*3+1]+wh*PL[uPal*3+2])/s;
+}
+
+// Volumetric curtains: march through horizontal slabs between 88 and 330 km altitude.
+// Each curtain is a thin sheet whose centre line wanders, leans and twists with height.
+vec3 aurora(vec3 rd, float dither){
+  if(rd.y<.015) return vec3(0.);
+  const int N=24;
+  float h0=88., h1=330., dh=(h1-h0)/float(N);
+  float Tm=T*(.55+.7*uAct), ry=max(rd.y,.05);
+  float sgL=max(8.,uPeak*.11), sgH=max(28.,uPeak*.40);
   vec3 acc=vec3(0.);
-  float x=p.x+(M.x-.5)*.7;
-  for(int l=0;l<4;l++){
-    if(l>=layers) break;
-    float fl=float(l), ph=fl*2.3;
-    float warp=fbm(vec2(x*.8+ph, t*.05+fl));
-    float base=.10+.10*fl+.20*sin(x*1.25+ph+warp*2.4+t*.10)+.30*(warp-.5)
-              +(M.y-.5)*.30+storm*.05*sin(x*8.+T*9.);
-    float d=p.y-base;
-    float hgt=.16+.38*fbm(vec2(x*1.6+ph*3.,t*.06+fl*4.));
-    float u=d/hgt;
-    float ray=fbm(vec2(x*26.+warp*14., t*.18+fl*3.));
-    float fine=vn(vec2(x*110.+fl*13., t*.4));
-    float mask=smoothstep(.22,.62,fbm(vec2(x*.9+ph*1.7,t*.04+fl*2.)));
-    float rays=(.25+1.1*ray*ray)*(.65+.35*fine)*(.2+.95*mask);
-    float edge=smoothstep(-.015,.035,d);
-    float fall=exp(-max(u,0.)*1.5);
-    float I=edge*fall*rays;
-    I+=exp(-abs(d)*60.)*.30*rays;                    // bright lower rim
-    vec3 col=mix(c0,c1,smoothstep(.0,.30,u));
-    col=mix(col,c2,smoothstep(.25,1.0,u));
-    col=mix(col,c3,smoothstep(.9,2.6,u));
-    acc+=col*I*(1.-fl*.16);
-  }
-  return acc*bright*(1.+storm)*.62;
-}
-
-float treeLayer(vec2 uv,float asp,float cells,float baseY,float hmin,float hmax,float seed){
-  float x=uv.x*asp*cells, id=floor(x), m=0.;
-  for(int k=-2;k<=2;k++){
-    float i=id+float(k);
-    float r=h21(vec2(i,seed)), r2=h21(vec2(i,seed+7.));
-    float cx=i+.5+(r2-.5)*.9;
-    float h=mix(hmin,hmax,r*r);
-    float yn=(uv.y-baseY)/h;
-    if(yn>0.&&yn<1.){
-      float tier=fract(yn*8.+r*3.);
-      float w=(1.-yn)*(.30+.42*tier)*1.25;
-      m=max(m,step(abs(x-cx),w));
+  for(int i=0;i<N;i++){
+    float h=h0+(float(i)+dither)*dh;
+    float s=h/rd.y;
+    if(s>1500.) break;
+    float d=h-uPeak;
+    float sg=d<0.?sgL:sgH;
+    float prof=exp(-d*d/(2.*sg*sg))+.30*exp(-pow((h-uPeak-85.)/75.,2.));
+    if(prof<.02) continue;
+    vec2 q=rd.xz*s;                       // km east, km north
+    float dens=0.;
+    for(int k=0;k<3;k++){
+      float fk=float(k);
+      float zc=250.+fk*150.
+        +85.*sin(q.x*.0058+fk*2.1+Tm*.07)
+        +50.*sin(q.x*.0125-fk*1.3-Tm*.10+(h-100.)*.006)
+        +120.*(n1(q.x*.0040+fk*9.+Tm*.035)-.5)
+        +(h-120.)*(.5*sin(fk*1.7+Tm*.05)+.12)            // lean: top leans away from the base
+        +40.*uAct*sin(q.x*.028+h*.022+Tm*.17+fk);       // twist with height
+      zc+=uMagOn*.85*exp(-pow((q.x-uMag.x)/130.,2.))*(uMag.y-zc);      // cursor pulls the curtain
+      float bd=abs(q.x-uBurstX);
+      zc+=uBurst*55.*sin(bd*.026-uBurstAge*4.)*exp(-bd*.003);          // substorm ripple
+      float dd=q.y-zc;
+      float w=9.+(h-100.)*.03+6.*n1(q.x*.02+fk*4.+Tm*.05);
+      float sheet=exp(-dd*dd/(2.*w*w))+.28*exp(-abs(dd)/(w*5.));
+      float rays=.35+pow(n1(q.x*.14+fk*17.+Tm*.25),1.6);
+      rays=mix(1.,rays,exp(-s*.0030));
+      float pat=sst(.22,.62,n1(q.x*.0046+fk*5.+Tm*.04));
+      dens+=sheet*rays*(.25+.95*pat)*(1.-.2*fk);
     }
+    dens*=1.+1.6*uBurst*exp(-abs(q.x-uBurstX)*.003);
+    float fade=exp(-s*.0011)*sst(.015,.14,rd.y);
+    acc+=emitCol(h)*dens*prof*fade*(dh/ry)*.0072;
   }
-  return max(m,step(uv.y,baseY+.004));
+  return acc*(.55+.75*uAct)*(uPal==0?1.3:1.);
 }
 
-vec3 stars(vec2 uv,float asp){
-  vec3 s=vec3(0.);
+float stars(vec3 rd){
+  float lat=asin(clamp(rd.y,-1.,1.)), lon=atan(rd.z,rd.x), s=0.;
   for(int k=0;k<2;k++){
-    float sc=k==0?110.:55.;
-    vec2 g=uv*vec2(asp,1.)*sc; vec2 id=floor(g); vec2 f=fract(g);
-    float r=h21(id+float(k)*17.);
-    vec2 c=vec2(h21(id+3.),h21(id+9.))*.7+.15;
-    float on=step(1.-starDen*(k==0?.10:.04),r);
-    float tw=.65+.35*sin(T*1.7+r*80.);
-    float b=on*smoothstep(k==0?.13:.18,0.,length(f-c))*tw*(k==0?.8:1.3);
-    s+=vec3(.9,.93,1.)*b;
+    float rows=k==0?260.:110.;
+    float fl=lat/(PI*.5)*rows, ri=floor(fl);
+    float cols=max(6.,floor(rows*4.*cos((ri+.5)/rows*PI*.5)));
+    float fc=(lon/(2.*PI)+.5)*cols, ci=floor(fc);
+    vec2 id=vec2(ri,ci)+float(k)*31.;
+    float r=h21(id);
+    if(r<(k==0?.10:.035)){
+      vec2 f=vec2(fract(fl),fract(fc))-vec2(.2+.6*h21(id+7.),.2+.6*h21(id+13.));
+      float tw=.7+.3*sin(T*1.6+r*90.);
+      s+=smoothstep(k==0?.22:.3,0.,length(f))*tw*(k==0?.6:1.)*(.6+.8*h21(id+3.));
+    }
   }
   return s;
 }
 
+vec3 skyAt(vec3 rd, float dither){
+  float ty=clamp(rd.y,0.,1.);
+  vec3 base=mix(SHZ[uPal],SZ[uPal],pow(ty,.55))*mix(1.,.10,uEye);
+  vec3 au=aurora(rd,dither);
+  au=1.-exp(-au*1.15);
+  au=mix(au,vec3(dot(au,vec3(.33)))*vec3(.70,1.,.85)*.75,uEye*.85);
+  float st=stars(rd);
+  vec3 c=1.-(1.-base)*(1.-au);
+  float la=dot(au,vec3(.33));
+  c+=vec3(.92,.94,1.)*st*(1.-clamp(la*1.4,0.,.9))*mix(.9,.4,uEye)*(.35+.65*sst(0.,.2,rd.y));
+  return c;
+}
+
+vec3 seaNormal(vec2 p,float dist){
+  float t=T*.5;
+  vec2 q=p*.35+vec2(t*.2,0.);
+  float e=.05;
+  float c0=fbm(q)+.4*fbm(p*1.2-vec2(0.,t*.35));
+  float cx=fbm(q+vec2(e,0.))+.4*fbm((p+vec2(e,0.))*1.2-vec2(0.,t*.35));
+  float cz=fbm(q+vec2(0.,e))+.4*fbm((p+vec2(0.,e))*1.2-vec2(0.,t*.35));
+  float k=(.9*exp(-dist*.025)+.05)/e*.25;
+  return normalize(vec3(-(cx-c0)*k,1.,-(cz-c0)*k));
+}
+
 void main(){
-  vec2 uv=gl_FragCoord.xy/R; float asp=R.x/R.y; float t=T*.6;
-  float H = ground==0 ? .17 : (ground==1 ? .38 : 0.);
-  float x=uv.x*asp;
+  vec2 p=(2.*gl_FragCoord.xy-R)/R.y;
+  vec3 rc=normalize(vec3(p*uTan,1.));
+  float cp=cos(uPitch), sp=sin(uPitch), cy=cos(uYaw), sy=sin(uYaw);
+  vec3 r1=vec3(rc.x, rc.y*cp+rc.z*sp, rc.z*cp-rc.y*sp);
+  vec3 rd=vec3(r1.x*cy+r1.z*sy, r1.y, r1.z*cy-r1.x*sy);
+  float dither=h21(gl_FragCoord.xy+fract(T)*13.);
+  float expo=mix(1.,.30,uEye);
+  vec3 hz=SHZ[uPal]*mix(1.,.10,uEye);
   vec3 col;
 
-  if(uv.y>=H){
-    float ys=(uv.y-H)/(1.-H);
-    vec3 sky=mix(vec3(.17,.10,.26),vec3(.025,.02,.09),pow(ys,.55));
-    sky+=vec3(.20,.08,.22)*fbm(vec2(x*.9,ys*1.4)+t*.02)*.35*(1.-ys);
-    vec3 au=aurora(vec2(x,ys),t);
-    float lum=dot(au,vec3(.33));
-    col=sky+au+stars(uv,asp)*(1.-clamp(lum*1.6,0.,.85))*smoothstep(0.,.15,ys);
-    if(ground==0){
-      float far=treeLayer(uv,asp,38.,H-.01,.03,.11,3.);
-      col=mix(col,vec3(.06,.04,.12)+au*.04,far*.85);
-      float near=treeLayer(uv,asp,20.,H-.015,.05,.20,11.);
-      col=mix(col,vec3(.008,.010,.018),near);
-    } else if(ground==1){
-      float far=treeLayer(uv,asp,38.,H-.005,.012,.06,3.);
-      col=mix(col,vec3(.02,.02,.05),far);
-    }
-  } else if(ground==0){
-    float g=(H-uv.y)/H;
-    vec3 au=aurora(vec2(1.2+x*.15, .22),t);
-    float bump=fbm(vec2(x*18.,g*14.));
-    vec3 snow=mix(vec3(.10,.08,.17),vec3(.60,.54,.70),pow(g,.55));
-    snow+=au*.55;
-    snow*=.80+.35*bump;
-    float cx=.70+g*.10, rw=.012+g*.16;
-    float rd=abs(uv.x-cx);
-    float road=smoothstep(rw,rw*.55,rd);
-    vec3 roadCol=snow*.92+vec3(.03,.025,.04);
-    roadCol*=1.-.25*smoothstep(.02,.0,abs(rd-rw*.3))*g;   // tracks
-    col=mix(snow,roadCol,road);
-    col=mix(col,vec3(.01,.012,.02),smoothstep(.10,.0,g)*.85);  // dark at horizon
-  } else { // sea
-    float g=(H-uv.y)/H;
-    vec2 q=vec2(x+(fbm(vec2(x*14.,uv.y*70.+T*.4))-.5)*.05*(.3+g), (H+g*H*.6-H)/(1.-H));
-    q.y=g*.7;
-    vec3 au=aurora(q,t);
-    col=vec3(.02,.025,.06)+au*(.65-g*.3)*(.75+.5*fbm(vec2(x*4.,uv.y*90.)));
+  if(rd.y>=0.||uGround==2){
+    col=skyAt(vec3(rd.x,abs(rd.y),rd.z),dither);
+  } else if(uGround==0){
+    float t=1.7/(-rd.y); vec2 g=rd.xz*t;
+    float dfar=exp(-t*.03);
+    float bump=.5+(fbm(g*.55)*.7+n2(g*3.1)*.3*dfar-.5)*(.35+.65*dfar);
+    vec3 shade=mix(vec3(.34,.33,.41),vec3(.55,.53,.62),sst(.25,.75,bump));
+    float rx=g.x-(1.5+.0009*g.y*g.y);
+    float road=smoothstep(2.8,2.2,abs(rx));
+    float track=exp(-pow((abs(rx)-1.)/.28,2.));
+    shade=mix(shade,shade*.84*(1.-.22*track),road);
+    shade*=1.-.18*exp(-pow((abs(rx)-2.9)/.5,2.));
+    vec2 sc=floor(g*38.);
+    float spk=step(.992,h21(sc))*(.5+.5*sin(T*3.+h21(sc+3.)*30.));
+    vec3 amb=mix(SHZ[uPal],PL[uPal*3+1],.25);
+    float lum=dot(amb,vec3(.33));
+    shade*=mix(vec3(1.),amb/max(max(amb.r,amb.g),amb.b),.55)*clamp(lum/.60,.22,1.25)*(.8+.35*uAct);
+    shade+=spk*vec3(.9,.95,1.)*exp(-t*.04)*.5;
+    col=mix(shade*expo,hz,1.-exp(-t*.010));
+  } else {
+    float t=2./(-rd.y); vec2 g=rd.xz*t;
+    vec3 n=seaNormal(g,t);
+    vec3 r=reflect(rd,n); r.y=abs(r.y)+.015;
+    vec3 rf=skyAt(normalize(r),dither);
+    float cosT=clamp(dot(-rd,n),0.,1.);
+    float F=.03+.97*pow(1.-cosT,5.);
+    vec3 body=vec3(.03,.05,.09)*(.4+dot(SHZ[uPal],vec3(1.)))*mix(1.,.3,uEye);
+    col=mix(body,rf,clamp(F*1.05,0.,1.));
+    col=mix(col,hz,1.-exp(-t*.006));
   }
-
-  col=1.-exp(-col*1.7);
-  col=pow(col,vec3(.95));
-  col*=1.-.35*dot(uv-.5,uv-.5)*2.;   // vignette
-  o=vec4(col,1.);
-}`;
+  vec2 vq=gl_FragCoord.xy/R-.5;
+  col*=1.-.35*dot(vq,vq);
+  o=vec4(clamp(col,0.,1.),1.);
+}
+`;
   var VS = '#version 300 es\nin vec2 a; void main(){ gl_Position = vec4(a,0.,1.); }';
 
-  var art = { S: { mx: .5, my: .5, tx: .5, ty: .5, storm: 0, time: 0 }, pal: 0, ground: 0 };
+  /* ---- procedural trees, drawn once into 360-degree strips ---- */
+  var SW = 6144, SH = 360, HZ = 290, PAD = 256;
+  function rngOf(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  function spruce(c, cx, by, h, r, fill, snow) {
+    var tiers = Math.max(4, Math.round(h / (h > 80 ? 9 : 6))), wm = h * (.15 + .07 * r()), lean = (r() - .5) * h * .05, th = h * .9 / tiers;
+    var tw = Math.max(1, h * .018);
+    function side(sg) {
+      var pts = [];
+      for (var i = 1; i <= tiers; i++) {
+        var t = i / tiers, y = by - h + h * .9 * t + h * .03, w = wm * (.25 + .75 * Math.pow(t, .9)) * (.78 + .44 * r()), lx = lean * (1 - t) * sg;
+        var jr = function () { return (r() - .5) * th * .3; };
+        pts.push([cx + sg * w + lx, y + th * .2]);
+        pts.push([cx + sg * w * .82 + lx, y - th * .1 + jr()]);
+        pts.push([cx + sg * w * .62 + lx, y - th * .30 + jr()]);
+        pts.push([cx + sg * w * .30 + lx, y - th * .52]);
+      }
+      return pts;
+    }
+    var R = side(1), L = side(-1);
+    c.fillStyle = fill; c.beginPath(); c.moveTo(cx + lean, by - h);
+    R.forEach(function (p) { c.lineTo(p[0], p[1]); });
+    c.lineTo(cx + tw, by); c.lineTo(cx - tw, by);
+    for (var i = L.length - 1; i >= 0; i--) c.lineTo(L[i][0], L[i][1]);
+    c.closePath(); c.fill();
+    if (snow) {
+      c.strokeStyle = 'rgba(205,195,232,.20)'; c.lineWidth = Math.max(1, h * .006);
+      for (var j = 0; j < R.length; j += 4) {
+        var a = R[j], b = R[j + 3] || a; c.beginPath(); c.moveTo(b[0], b[1]); c.lineTo(a[0], a[1] - 1); c.stroke();
+        var a2 = L[j], b2 = L[j + 3] || a2; c.beginPath(); c.moveTo(b2[0], b2[1]); c.lineTo(a2[0], a2[1] - 1); c.stroke();
+      }
+    }
+  }
+  function bare(c, x, by, h, r, col) {
+    c.strokeStyle = col; c.lineCap = 'round';
+    (function br(px, py, len, ang, w, d) {
+      if (d > 6 || len < 2) return;
+      var x2 = px + Math.sin(ang) * len, y2 = py - Math.cos(ang) * len;
+      c.lineWidth = w; c.beginPath(); c.moveTo(px, py); c.lineTo(x2, y2); c.stroke();
+      var n = d < 2 ? 2 : (r() < .5 ? 2 : 3);
+      for (var i = 0; i < n; i++) br(x2, y2, len * (.62 + .2 * r()), ang + (r() - .5) * 1.25 + (i - (n - 1) / 2) * .35, Math.max(.6, w * .68), d + 1);
+    })(x, by, h * .3, (r() - .5) * .1, Math.max(1.2, h * .035), 0);
+  }
+  function makeStrip(o) {
+    var cv = document.createElement('canvas'); cv.width = SW + PAD; cv.height = SH;
+    var c = cv.getContext('2d'), r = rngOf(o.seed);
+    for (var n = 0; n < o.count; n++) {
+      var x = r() * SW, gap = .5 + .5 * Math.sin(x * .0021 + o.seed) * Math.sin(x * .00073 + 1.3);
+      if (r() > o.clump + (1 - o.clump) * gap) continue;
+      var h = o.h0 + (o.h1 - o.h0) * Math.pow(r(), 1.6), by = o.base + (r() - .5) * o.spread;
+      [x, x + SW].forEach(function (xx) {
+        if (xx > SW + PAD + 200) return;
+        if (o.bare && r() < o.bare) bare(c, xx, by, h * 1.1, r, o.col);
+        else spruce(c, xx, by, h, r, o.col, o.snow);
+      });
+    }
+    // wrap padding: copy the first PAD columns to the right edge
+    c.drawImage(cv, 0, 0, PAD, SH, SW, 0, PAD, SH);
+    return cv;
+  }
+  var strips = null;
+  function buildStrips() {
+    strips = {
+      far: makeStrip({ seed: 11, count: 2600, clump: .8, h0: 26, h1: 60, base: HZ + 2, spread: 4, col: 'rgb(34,30,50)' }),
+      mid: makeStrip({ seed: 23, count: 800, clump: .7, h0: 60, h1: 135, base: HZ + 10, spread: 10, col: 'rgb(22,24,42)', bare: .05 }),
+      near: makeStrip({ seed: 37, count: 60, clump: .2, h0: 130, h1: 215, base: HZ + 36, spread: 12, col: 'rgb(8,9,16)', snow: true, bare: .12 })
+    };
+  }
+
+  var art = { pal: 0, ground: 0 };
   (function initArt() {
-    var cv = $('art'), gl = cv.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
+    var cv = $('art'), tv = $('trees'), tx = tv.getContext('2d');
+    var gl = cv.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
     if (!gl) { $('artFallback').hidden = false; return; }
     function sh(t, s) { var o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o);
       if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(o)); } return o; }
@@ -357,57 +489,151 @@ void main(){
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
     var loc = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    var U = function (n) { return gl.getUniformLocation(pr, n); };
-    var u = { R: U('R'), T: U('T'), M: U('M'), storm: U('storm'), bright: U('bright'), starDen: U('starDen'), layers: U('layers'), ground: U('ground'), pal: U('pal') };
-    var S = art.S, vis = visibleFlag(cv), last = performance.now();
+    var U = {}; ['R', 'uMag', 'T', 'uYaw', 'uPitch', 'uTan', 'uPeak', 'uAct', 'uEye', 'uMagOn', 'uBurst', 'uBurstAge', 'uBurstX', 'uPal', 'uGround']
+      .forEach(function (n) { U[n] = gl.getUniformLocation(pr, n); });
+    buildStrips();
 
-    function aim(e) {
-      var r = cv.getBoundingClientRect();
-      S.tx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-      S.ty = Math.min(1, Math.max(0, 1 - (e.clientY - r.top) / r.height));
+    var cam = { yaw: 0, pitch: .46, fov: 1.36, vy: 0, vp: 0 };
+    var S = { time: 0, magOn: 0, mag: [0, 300], magT: 0, burstAge: 99, burstX: 0, drag: null, hover: null, dirty: true, scale: .6, ft: 16 };
+    var vis = visibleFlag(cv), last = performance.now(), W = 1, H = 1;
+
+    function pointerRay(px, py) {
+      var tanH = Math.tan(cam.fov / 2), x = (2 * px - W) / H * tanH, y = (H - 2 * py) / H * tanH, n = Math.hypot(x, y, 1);
+      var rc = [x / n, y / n, 1 / n], cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch), cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+      var r1 = [rc[0], rc[1] * cp + rc[2] * sp, rc[2] * cp - rc[1] * sp];
+      return [r1[0] * cy + r1[2] * sy, r1[1], r1[2] * cy - r1[0] * sy];
     }
-    cv.addEventListener('pointermove', aim);
-    cv.addEventListener('pointerdown', function (e) { aim(e); S.storm = 1; });
-    cv.addEventListener('keydown', function (e) {
-      var k = e.key, st = .06;
-      if (k === 'ArrowLeft') S.tx = Math.max(0, S.tx - st);
-      else if (k === 'ArrowRight') S.tx = Math.min(1, S.tx + st);
-      else if (k === 'ArrowUp') S.ty = Math.min(1, S.ty + st);
-      else if (k === 'ArrowDown') S.ty = Math.max(0, S.ty - st);
-      else if (k === 'Enter' || k === ' ') S.storm = 1;
-      else return;
-      e.preventDefault();
+    function planePoint(px, py) {
+      var rd = pointerRay(px, py); if (rd[1] < .06) return null;
+      var s = 150 / rd[1]; return [rd[0] * s, rd[2] * s];
+    }
+    function local(e) { var r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+    function burst(x) { S.burstAge = 0; S.burstX = x; }
+
+    cv.addEventListener('pointerdown', function (e) {
+      cv.setPointerCapture(e.pointerId); var p = local(e);
+      S.drag = { x: p[0], y: p[1], sx: p[0], sy: p[1], t: performance.now(), moved: 0 }; cam.vy = cam.vp = 0;
     });
-    $('stormBtn').addEventListener('click', function () { S.storm = 1; });
+    cv.addEventListener('pointermove', function (e) {
+      var p = local(e);
+      if (S.drag) {
+        var dx = p[0] - S.drag.x, dy = p[1] - S.drag.y, k = cam.fov / H;
+        S.drag.moved += Math.abs(dx) + Math.abs(dy); S.drag.x = p[0]; S.drag.y = p[1];
+        cam.yaw -= dx * k; cam.pitch = Math.max(-.45, Math.min(1.45, cam.pitch + dy * k));
+        cam.vy = -dx * k; cam.vp = dy * k; S.dirty = true;
+      } else { S.hover = p; }
+    });
+    function up(e) {
+      if (!S.drag) return;
+      var d = S.drag, tap = d.moved < 6 && performance.now() - d.t < 450; S.drag = null;
+      if (tap) { var q = planePoint(d.sx, d.sy); burst(q ? q[0] : 0); }
+    }
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    cv.addEventListener('pointerleave', function () { S.hover = null; });
+    cv.addEventListener('wheel', function (e) { e.preventDefault(); cam.fov = Math.max(.9, Math.min(1.75, cam.fov * (1 + e.deltaY * .001))); S.dirty = true; }, { passive: false });
+    cv.addEventListener('keydown', function (e) {
+      var k = e.key, st = .07;
+      if (k === 'ArrowLeft') cam.yaw -= st; else if (k === 'ArrowRight') cam.yaw += st;
+      else if (k === 'ArrowUp') cam.pitch = Math.min(1.45, cam.pitch + st); else if (k === 'ArrowDown') cam.pitch = Math.max(-.45, cam.pitch - st);
+      else if (k === 'Enter' || k === ' ') burst(0); else return;
+      S.dirty = true; e.preventDefault();
+    });
+    $('stormBtn').addEventListener('click', function () { burst((Math.random() - .5) * 500); });
+    $('resetBtn').addEventListener('click', function () { cam.yaw = 0; cam.pitch = .46; cam.fov = 1.36; S.dirty = true; });
     $('shotBtn').addEventListener('click', function () {
-      draw(0);
-      var a = document.createElement('a'); a.download = 'aurora.png'; a.href = cv.toDataURL('image/png'); a.click();
+      draw(0, true);
+      var t = document.createElement('canvas'); t.width = cv.width; t.height = cv.height; var c = t.getContext('2d');
+      c.drawImage(cv, 0, 0); c.drawImage(tv, 0, 0, cv.width, cv.height);
+      var a = document.createElement('a'); a.download = 'aurora.png'; a.href = t.toDataURL('image/png'); a.click();
     });
     $('palChips').addEventListener('click', function (e) { var b = e.target.closest('[data-pal]'); if (!b) return; art.pal = +b.dataset.pal; setPressed($('palChips'), b, 'data-pal'); });
-    $('groundChips').addEventListener('click', function (e) { var b = e.target.closest('[data-ground]'); if (!b) return; art.ground = +b.dataset.ground; setPressed($('groundChips'), b, 'data-ground'); });
-    ['bright', 'speed', 'layers'].forEach(function (id) {
-      var el = $(id), lab = $(id + 'Lab');
-      el.addEventListener('input', function () { lab.textContent = id === 'layers' ? el.value : (+el.value).toFixed(2); });
+    $('groundChips').addEventListener('click', function (e) { var b = e.target.closest('[data-ground]'); if (!b) return; art.ground = +b.dataset.ground; setPressed($('groundChips'), b, 'data-ground'); S.dirty = true; });
+    ['act', 'cam'].forEach(function (id) {
+      var el = $(id), lab = $(id + 'Lab'); el.addEventListener('input', function () { lab.textContent = (+el.value).toFixed(2); S.dirty = true; });
     });
-    if (reduce) { $('speed').value = 0.15; $('speedLab').textContent = '0.15'; }
+    function syncE(E) {
+      $('energyA').value = eToSlider(E);
+      $('energyALab').textContent = (E < 1 ? E.toFixed(1) : E < 10 ? E.toFixed(1).replace(/\.0$/, '') : Math.round(E)) + ' keV · 约 ' + Math.round(altOf(E) / 5) * 5 + ' km';
+    }
+    Energy.subs.push(syncE); syncE(Energy.E);
+    $('energyA').addEventListener('input', function (e) { Energy.set(sliderToE(+e.target.value)); });
+    if (reduce) { $('act').value = .35; $('actLab').textContent = '0.35'; }
 
-    function draw(dt) {
-      var s = sized(cv); gl.viewport(0, 0, cv.width, cv.height);
-      S.time += dt * parseFloat($('speed').value);
-      S.mx += (S.tx - S.mx) * Math.min(dt * 3, 1); S.my += (S.ty - S.my) * Math.min(dt * 3, 1);
-      S.storm = Math.max(0, S.storm - dt * .5);
-      gl.uniform2f(u.R, cv.width, cv.height); gl.uniform1f(u.T, S.time);
-      gl.uniform2f(u.M, S.mx, S.my); gl.uniform1f(u.storm, S.storm);
-      gl.uniform1f(u.bright, parseFloat($('bright').value)); gl.uniform1f(u.starDen, .6);
-      gl.uniform1i(u.layers, parseInt($('layers').value, 10));
-      gl.uniform1i(u.ground, art.ground); gl.uniform1i(u.pal, art.pal);
+    /* ---- forest overlay: exact horizon projection, one slice at a time ---- */
+    function drawTrees() {
+      var d = Math.min(window.devicePixelRatio || 1, 2), r = cv.getBoundingClientRect();
+      W = r.width; H = r.height;
+      var w = Math.round(W * d), h = Math.round(H * d);
+      if (tv.width !== w || tv.height !== h) { tv.width = w; tv.height = h; }
+      tx.setTransform(d, 0, 0, d, 0, 0); tx.clearRect(0, 0, W, H);
+      if (art.ground === 2) return;
+      var tanH = Math.tan(cam.fov / 2), cp = Math.cos(cam.pitch), focal = H / 2 / tanH;
+      var hy = H / 2 * (1 + Math.tan(cam.pitch) / tanH);
+      var perRad = SW / (2 * Math.PI), STEP = 3;
+      var layers = art.ground === 0 ? [['far', .9, 1], ['mid', .98, 1], ['near', 1, 1]] : [];
+      if (art.ground === 1) {
+        var rh = Math.max(6, focal * .035);
+        tx.fillStyle = 'rgba(46,38,76,.8)'; tx.beginPath(); tx.moveTo(0, hy + 1);
+        for (var rx = 0; rx <= W; rx += 6) {
+          var az = cam.yaw + Math.atan(((2 * rx - W) / H) * tanH * cp), q = az * 5;
+          tx.lineTo(rx, hy - rh * (.25 + .55 * Math.max(0, Math.sin(q) * Math.sin(q * .37 + 1) + .3) + .12 * Math.sin(q * 9)));
+        }
+        tx.lineTo(W, hy + 1); tx.closePath(); tx.fill();
+      }
+      layers.forEach(function (L) {
+        tx.globalAlpha = L[1];
+        var src = strips[L[0]];
+        for (var x = 0; x < W; x += STEP) {
+          var a0 = cam.yaw + Math.atan(((2 * x - W) / H) * tanH * cp), a1 = cam.yaw + Math.atan(((2 * (x + STEP) - W) / H) * tanH * cp);
+          var m = ((a0 % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), sx = m * perRad, sw = Math.max(1, (a1 - a0) * perRad);
+          var dz = Math.cos(a0 - cam.yaw), sc = focal / Math.max(.2, dz) / perRad * L[2];
+          tx.drawImage(src, sx, 0, sw, SH, x, hy - HZ * sc, STEP + .5, SH * sc);
+        }
+      });
+      tx.globalAlpha = 1;
+      var ey = 1 - parseFloat($('cam').value);
+      if (ey > 0.01) { tx.globalCompositeOperation = 'source-atop'; tx.fillStyle = 'rgba(2,3,8,' + (ey * .8) + ')'; tx.fillRect(0, 0, W, H); tx.globalCompositeOperation = 'source-over'; }
+    }
+
+    var uni = { tanH: 1 };
+    function draw(dt, force) {
+      var rr = cv.getBoundingClientRect(); W = rr.width; H = rr.height;
+      var tg = S.scale * Math.min(window.devicePixelRatio || 1, 1.5);
+      var w = Math.max(2, Math.round(W * tg)), h = Math.max(2, Math.round(H * tg));
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; S.dirty = true; }
+      gl.viewport(0, 0, cv.width, cv.height);
+      // inertia
+      if (!S.drag && (Math.abs(cam.vy) > 1e-4 || Math.abs(cam.vp) > 1e-4)) {
+        cam.yaw += cam.vy; cam.pitch = Math.max(-.45, Math.min(1.45, cam.pitch + cam.vp)); cam.vy *= .93; cam.vp *= .93; S.dirty = true;
+      }
+      // magnet target
+      var want = 0;
+      if (S.hover && !S.drag) { var q = planePoint(S.hover[0], S.hover[1]); if (q) { S.mag = q; want = 1; } }
+      S.magOn += (want - S.magOn) * Math.min(dt * 4, 1);
+      S.time += dt * (reduce ? .3 : 1);
+      S.burstAge += dt;
+      var amp = S.burstAge < 20 ? Math.exp(-S.burstAge * .55) : 0;
+      gl.uniform2f(U.R, cv.width, cv.height); gl.uniform1f(U.T, S.time);
+      gl.uniform1f(U.uYaw, cam.yaw); gl.uniform1f(U.uPitch, cam.pitch); gl.uniform1f(U.uTan, Math.tan(cam.fov / 2));
+      gl.uniform1f(U.uPeak, altOf(Energy.E)); gl.uniform1f(U.uAct, parseFloat($('act').value));
+      gl.uniform1f(U.uEye, 1 - parseFloat($('cam').value));
+      gl.uniform2f(U.uMag, S.mag[0], S.mag[1]); gl.uniform1f(U.uMagOn, S.magOn);
+      gl.uniform1f(U.uBurst, amp); gl.uniform1f(U.uBurstAge, S.burstAge); gl.uniform1f(U.uBurstX, S.burstX);
+      gl.uniform1i(U.uPal, art.pal); gl.uniform1i(U.uGround, art.ground);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      if (S.dirty || force) { drawTrees(); S.dirty = false; }
     }
     function frame(now) {
       var dt = Math.min((now - last) / 1000, .1); last = now;
-      if (vis.on && !document.hidden) draw(dt);
+      if (vis.on && !document.hidden) {
+        var t0 = performance.now(); draw(dt);
+        // adaptive resolution: keep the shader around 30 fps on weaker GPUs
+        S.ft += (dt * 1000 - S.ft) * .05;
+        if (S.ft > 30 && S.scale > .4) { S.scale -= .02; } else if (S.ft < 18 && S.scale < 1) { S.scale += .01; }
+      }
       requestAnimationFrame(frame);
     }
+    window.addEventListener('resize', function () { S.dirty = true; });
     requestAnimationFrame(frame);
   })();
 
@@ -591,16 +817,7 @@ void main(){
   (function initProf() {
     var cv = $('prof'), ctx = cv.getContext('2d'), vis = visibleFlag(cv);
     var H0 = 70, H1 = 330;                                       // altitude window, km
-    var TAB = [[.1, 250], [.5, 190], [1, 160], [3, 130], [10, 110], [30, 97], [100, 85]];
     function sstep(a, b, x) { var t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
-    function altOf(E) {
-      var le = Math.log(E);
-      for (var i = 1; i < TAB.length; i++) if (E <= TAB[i][0]) {
-        var a = TAB[i - 1], b = TAB[i], t = (le - Math.log(a[0])) / (Math.log(b[0]) - Math.log(a[0]));
-        return a[1] + (b[1] - a[1]) * t;
-      }
-      return TAB[TAB.length - 1][1];
-    }
     function wts(h) {                                             // [pink, green, red]
       return [1 - sstep(95, 115, h), sstep(90, 105, h) * (1 - sstep(170, 250, h)), sstep(150, 240, h)];
     }
@@ -619,9 +836,10 @@ void main(){
       var rest = []; w.forEach(function (x, i) { if (i !== dom && x > .3) rest.push(names[i]); });
       $('altGas').innerHTML = '<span class="sw" style="background:rgb(' + mix(w, 1).map(Math.round).join(',') + ')"></span>这里以<strong>' + names[dom] + '</strong>为主' + (rest.length ? '，同时带一些' + rest.join('、') : '') + '。';
     }
-    $('energy').addEventListener('input', function (e) { setE(Math.pow(10, +e.target.value * 3 - 1)); });
-    document.querySelectorAll('[data-e]').forEach(function (b) { b.addEventListener('click', function () { setE(+b.dataset.e); }); });
-    setE(3);
+    $('energy').addEventListener('input', function (e) { Energy.set(sliderToE(+e.target.value)); });
+    Energy.subs.push(setE);
+    document.querySelectorAll('[data-e]').forEach(function (b) { b.addEventListener('click', function () { Energy.set(+b.dataset.e); }); });
+    setE(Energy.E);
 
     function draw(now) {
       var m = sized(cv), W = m.w, H = m.h; ctx.setTransform(m.d, 0, 0, m.d, 0, 0);
