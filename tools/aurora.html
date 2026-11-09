@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>极光 · Poketto</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/poketto.css">
+<style>
+  .pk-page { max-width: 1120px; }
+  .stage { position: relative; padding: 0; overflow: hidden; --l: 16px; background-color: #0a0818; touch-action: none; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .stage.art { height: clamp(340px, 56vh, 600px); }
+  .stage.mag { height: clamp(300px, 46vh, 460px); }
+  #art { cursor: crosshair; }
+  canvas:focus-visible { outline: 2px solid var(--leaf); outline-offset: -4px; }
+  .badge, .hint { position: absolute; z-index: 5; margin: 0; pointer-events: none; padding: 2px 8px; background: #efeee9; color: var(--ink); border-radius: 3px;
+    font-family: var(--body); font-weight: 700; letter-spacing: .02em; text-transform: none; box-shadow: 0 0 0 1px rgba(29,30,27,.22); }
+  .badge { top: 12px; left: 12px; }
+  .hint { bottom: 12px; left: 12px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; color: #efeee9; text-align: center; padding: 24px; }
+  .fallback[hidden] { display: none; }
+  .ctrl { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: flex-end; padding: 16px 20px; margin-top: 16px; }
+  .ctrl .group { display: grid; gap: 4px; min-width: 150px; flex: 1 1 150px; }
+  .ctrl .group.wide { flex: 2 1 260px; }
+  .ctrl .chips { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+  .lab { font-size: 13px; color: var(--ink-2); margin: 0; }
+  .lab strong { color: var(--ink); font-weight: 700; }
+  .sec { display: grid; gap: 14px; }
+  .sec-head { display: grid; gap: 6px; max-width: 70ch; }
+  .split { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 22px; align-items: start; }
+  .col { display: grid; gap: 16px; min-width: 0; }
+  .panel { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
+  .stages { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .caption { min-height: 4.8em; margin: 0; }
+  .stage.prof { height: clamp(320px, 52vh, 480px); }
+  .read-big { font-weight: 900; font-size: clamp(26px, 3.2vw, 36px); line-height: 1.15; margin: 0; }
+  .sub { font-family: var(--mono); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; margin: 0; }
+  .ends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+  .sw { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; box-shadow: 0 0 0 1px rgba(29,30,27,.4); }
+  .notes { display: grid; gap: 12px; max-width: 760px; }
+  .why { display: grid; gap: 12px; max-width: 760px; }
+  @media (max-width: 860px) {
+    .split { grid-template-columns: minmax(0, 1fr); }
+    .stage.art { height: 340px; }
+    .stage.mag { height: 300px; }
+    .stage.prof { height: 360px; }
+  }
+</style>
+<script src="../assets/poketto.js" defer></script>
+</head>
+<body>
+<main class="pk-page">
+  <div class="pk-bar">
+    <a class="pk-home" href="../index.html" data-pk-wordmark title="回到 Poketto 首页"></a>
+    <div class="pk-label"><a href="../index.html" class="pk-zh">口袋工具箱</a> / Aurora &middot; <span class="pk-zh">物理</span></div>
+  </div>
+
+  <header class="pk-head">
+    <div class="pk-kicker">
+      <span class="pk-label">Tool No.07</span>
+      <span class="pk-label">Solar wind &middot; Magnetic field &middot; Light</span>
+    </div>
+    <h1 class="pk-title">极光</h1>
+    <svg class="pk-star" viewBox="0 0 40 80" aria-hidden="true"><path d="M20 0 C21.2 26 22.5 33 40 38 C22.5 43 21.2 52 20 80 C18.8 52 17.5 43 0 38 C17.5 33 18.8 26 20 0Z"/></svg>
+    <div class="pk-br pk-lead">
+      <p class="pk-verse">先看，再问它为什么这样亮。<br>上面这块夜空可以用手牵引、调色；<br>往下看，一颗粒子怎样从太阳出发，在哪个高度变成哪种颜色。</p>
+    </div>
+  </header>
+
+  <!-- ============ Part 1: show ============ -->
+  <section class="sec" aria-label="演示">
+    <div class="sec-head">
+      <div class="pk-h2"><small>Part 1 · Show</small>演示：一块可以牵引的夜空</div>
+    </div>
+    <div class="stage art pk-br" id="artStage">
+      <canvas id="art" tabindex="0" role="img" aria-label="极光动画。用鼠标或手指在画面里移动来牵引光幕，点击或按回车触发地磁暴，方向键也可以移动。"></canvas>
+      <p class="badge pk-label">艺术示意</p>
+      <p class="hint pk-label">移动牵引光幕 · 点击触发地磁暴</p>
+      <div class="fallback" id="artFallback" hidden><p>这个浏览器打不开 WebGL2，看不到动态极光。可以换一个新一点的浏览器再试。</p></div>
+    </div>
+    <div class="ctrl pk-br pk-veil">
+      <div class="group wide">
+        <div class="pk-h2"><small>Palette</small>色板</div>
+        <div class="chips" id="palChips" role="group" aria-label="色板">
+          <button class="pk-chip zh" type="button" data-pal="0" aria-pressed="true">粉紫（照片里的）</button>
+          <button class="pk-chip zh" type="button" data-pal="1" aria-pressed="false">物理配色（按高度）</button>
+          <button class="pk-chip zh" type="button" data-pal="2" aria-pressed="false">冰蓝</button>
+          <button class="pk-chip zh" type="button" data-pal="3" aria-pressed="false">赤红</button>
+        </div>
+      </div>
+      <div class="group">
+        <p class="lab">亮度 <strong id="brightLab">1.00</strong></p>
+        <input class="pk-range" type="range" id="bright" min="0.3" max="2" step="0.01" value="1" aria-label="亮度">
+      </div>
+      <div class="group">
+        <p class="lab">流速 <strong id="speedLab">0.60</strong></p>
+        <input class="pk-range" type="range" id="speed" min="0" max="3" step="0.01" value="0.6" aria-label="流速">
+      </div>
+      <div class="group">
+        <p class="lab">光幕层数 <strong id="layersLab">3</strong></p>
+        <input class="pk-range" type="range" id="layers" min="1" max="4" step="1" value="3" aria-label="光幕层数">
+      </div>
+      <div class="group wide">
+        <div class="pk-h2"><small>Ground</small>地面</div>
+        <div class="chips" id="groundChips" role="group" aria-label="地面">
+          <button class="pk-chip zh" type="button" data-ground="0" aria-pressed="true">雪地森林</button>
+          <button class="pk-chip zh" type="button" data-ground="1" aria-pressed="false">海面倒影</button>
+          <button class="pk-chip zh" type="button" data-ground="2" aria-pressed="false">纯夜空</button>
+          <button class="pk-chip zh" type="button" id="stormBtn">地磁暴</button>
+          <button class="pk-chip zh" type="button" id="shotBtn">保存截图</button>
+        </div>
+      </div>
+    </div>
+    <p class="pk-note">这里的光幕是用噪声函数画出来的，<b>只借用了真实极光的外形特征</b>：下缘清晰、向上渐隐，竖直的光柱，以及下粉、中绿、上红的分层。想知道这些特征从哪来，往下看第二部分。</p>
+  </section>
+
+  <hr class="pk-rule">
+
+  <!-- ============ Part 2: principle ============ -->
+  <section class="sec" aria-label="原理">
+    <div class="sec-head">
+      <div class="pk-h2"><small>Part 2 · Why</small>原理：从太阳到天空，分三步</div>
+      <p class="pk-note">一，带电粒子从太阳来，被地球磁场引到两极附近。二，它们撞进高空稀薄的空气。三，被撞的原子和分子放出光，颜色由<b>气体种类</b>和<b>高度</b>决定。</p>
+    </div>
+
+    <div class="split">
+      <div class="col">
+        <div class="stage mag pk-br" id="magStage">
+          <canvas id="mag" role="img" aria-label="地球磁场剖面示意图。粒子从左边的太阳吹来，大部分绕过磁层，一部分进入夜侧磁尾，沿磁力线冲向南北两极附近的大气。"></canvas>
+          <p class="badge pk-label">地球磁场剖面 · 示意</p>
+        </div>
+        <div class="stages" id="stageChips" role="group" aria-label="分步查看">
+          <button class="pk-chip zh" type="button" data-st="0" aria-pressed="true">全部</button>
+          <button class="pk-chip zh" type="button" data-st="1" aria-pressed="false">① 太阳风</button>
+          <button class="pk-chip zh" type="button" data-st="2" aria-pressed="false">② 磁层挡住大部分</button>
+          <button class="pk-chip zh" type="button" data-st="3" aria-pressed="false">③ 沿磁力线下行</button>
+          <button class="pk-chip zh" type="button" data-st="4" aria-pressed="false">④ 撞上大气</button>
+        </div>
+        <p class="pk-note caption" id="caption" aria-live="polite"></p>
+      </div>
+
+      <div class="col">
+        <section class="panel pk-br pk-veil" aria-label="高度与颜色">
+          <div class="pk-h2"><small>Altitude &amp; colour</small>粒子能量，决定它在哪层发光</div>
+          <p class="read-big" id="altRead" aria-live="polite">130 km</p>
+          <p class="lab" id="altGas"></p>
+          <input class="pk-range" type="range" id="energy" min="0" max="1" step="0.001" value="0.5" aria-label="入射电子能量，对数刻度">
+          <div class="ends"><span>0.1 keV</span><span id="eLab">3 keV</span><span>100 keV</span></div>
+          <div class="stages" role="group" aria-label="能量预设">
+            <button class="pk-chip zh" type="button" data-e="0.3">低能 0.3 keV</button>
+            <button class="pk-chip zh" type="button" data-e="3">常见 3 keV</button>
+            <button class="pk-chip zh" type="button" data-e="30">高能 30 keV</button>
+          </div>
+        </section>
+        <div class="stage prof pk-br" id="profStage">
+          <canvas id="prof" role="img" aria-label="高度剖面图。左边细条表示不同高度偏向的颜色，中间是当前粒子能量下的发光亮度，右边曲线是空气密度。"></canvas>
+          <p class="badge pk-label">高度剖面 · 示意</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="why">
+      <p class="pk-note"><b>为什么下缘清晰、上面渐隐？</b>粒子往下冲，空气越来越密。能量一定的粒子会在差不多的深度停下来，所以亮度在那里最强，再往下几乎没有；往上没有被撞的空气越来越少，亮度慢慢变弱。拖上面的能量滑条，能看到亮带随之上下移动。</p>
+      <p class="pk-note"><b>为什么是竖直的光柱？</b>带电粒子会沿着磁力线绕圈前进。磁力线在极区附近接近竖直，所以发光的轨迹也是一条条竖线。第一部分里的竖纹就是模仿这一点。</p>
+      <p class="pk-note"><b>为什么颜色不同？</b>氧原子在约 100 到 250 km 发 557.7 nm 的<span class="pk-hl">绿光</span>，这是最常见的极光颜色。更高处空气稀薄，氧原子可以慢慢放出 630.0 nm 的<span class="pk-hl">红光</span>，这种红光放出得很慢，低处的原子在放光前就先被别的粒子碰掉了能量。约 100 km 以下，氮分子贡献偏<span class="pk-hl">粉紫</span>的光，常见于光幕的下缘。你给的那张照片，下缘的粉色就是这一层。</p>
+      <p class="pk-note"><b>为什么只在高纬度？</b>地球磁场把粒子引向两个磁极，粒子落点在磁纬约 65° 到 70° 的一圈环带上，叫极光椭圆带。太阳活动强的时候，这圈环带会向低纬扩大，更远的地方也能看见。</p>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div class="pk-h2"><small>The model</small>关于这个模型</div>
+    <p class="pk-note">这是教学示意图，不是极光预报，也不是粒子模拟。<b>第一部分的光幕是噪声画出来的艺术画面</b>，不由物理方程算出；只有分层的颜色顺序按第二部分的规律来设。</p>
+    <p class="pk-note">磁场剖面用偶极场，磁力线满足 r = L·cos²λ（r 以地球半径为单位，λ 是磁纬，L 是赤道上离地心的距离）。落点纬度由 cos²λ = 1/L 算出，L = 6 时约 66°，与极光椭圆带的位置一致。夜侧的磁力线被拉长了，日侧的磁层压缩画得示意化，磁层边界的形状、粒子速度和数量都没有按比例，也没有画出磁重联的细节，只表示「一部分粒子从磁尾进入」这一结论。</p>
+    <p class="pk-note">能量与高度的对应取一张近似表：约 0.1 keV 在 250 km，1 keV 在 160 km，10 keV 在 110 km，100 keV 在 85 km，中间按对数插值。颜色权重（红光在约 150 km 以上、绿光约 100 到 200 km、粉紫在约 100 km 以下）也是教学用的粗略分段。真实极光的亮度分布受粒子能谱、大气成分和太阳活动影响，不同事件差别很大。</p>
+    <p class="pk-note">页面用本机 WebGL2 绘制艺术画面；打不开时只显示提示，原理部分仍可使用。</p>
+  </section>
+
+  <footer class="pk-foot">
+    <a class="pk-back pk-label" href="../index.html">
+      <svg viewBox="0 0 34 10" aria-hidden="true"><path d="M34 5 H2 M7 1 L2 5 L7 9" fill="none" stroke="#1d1e1b" stroke-width="1.4"/></svg>
+      回到口袋 <span class="zh">/ Back to the pocket</span>
+    </a>
+    <span class="pk-label">Poketto &middot; Made with curiosity</span>
+  </footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- tiny helpers ---------- */
+  function sized(cv) {
+    var d = Math.min(window.devicePixelRatio || 1, 2), r = cv.getBoundingClientRect();
+    var w = Math.max(2, Math.round(r.width * d)), h = Math.max(2, Math.round(r.height * d));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    return { w: r.width, h: r.height, d: d };
+  }
+  function visibleFlag(el) {
+    var o = { on: true };
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { o.on = e[0].isIntersecting; }).observe(el);
+    return o;
+  }
+  function setPressed(group, btn, attr) {
+    group.querySelectorAll('[' + attr + ']').forEach(function (b) { b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); });
+  }
+
+  /* =====================================================
+     Part 1 · WebGL2 aurora (artistic noise model)
+     ===================================================== */
+  var FS = `#version 300 es
+precision highp float;
+out vec4 o;
+uniform vec2 R; uniform float T; uniform vec2 M; uniform float storm;
+uniform float bright, starDen; uniform int layers, ground, pal;
+
+// per palette: lower edge, mid, high, top
+vec3 PAL[16] = vec3[16](
+  vec3(.85,.95,.45), vec3(.98,.42,.78), vec3(.70,.96,.96), vec3(.42,.28,.85),
+  vec3(.95,.40,.75), vec3(.30,1.0,.45), vec3(.35,.95,.62), vec3(.95,.22,.28),
+  vec3(.50,.90,1.0), vec3(.30,.60,1.0), vec3(.60,.80,1.0), vec3(.50,.30,.90),
+  vec3(1.0,.60,.30), vec3(.95,.15,.25), vec3(.90,.30,.60), vec3(.50,.10,.50));
+
+float h21(vec2 p){ vec3 q=fract(vec3(p.xyx)*.1031); q+=dot(q,q.yzx+33.33); return fract((q.x+q.y)*q.z); }
+float vn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*f*(f*(f*6.-15.)+10.);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+1.),f.x),f.y); }
+float fbm(vec2 p){ float s=0.,a=.5; mat2 m=mat2(.8,.6,-.6,.8);
+  for(int i=0;i<5;i++){ s+=a*vn(p); p=m*p*2.02+3.7; a*=.5; } return s; }
+
+vec3 aurora(vec2 p, float t){
+  vec3 c0=PAL[pal*4], c1=PAL[pal*4+1], c2=PAL[pal*4+2], c3=PAL[pal*4+3];
+  vec3 acc=vec3(0.);
+  float x=p.x+(M.x-.5)*.7;
+  for(int l=0;l<4;l++){
+    if(l>=layers) break;
+    float fl=float(l), ph=fl*2.3;
+    float warp=fbm(vec2(x*.8+ph, t*.05+fl));
+    float base=.10+.10*fl+.20*sin(x*1.25+ph+warp*2.4+t*.10)+.30*(warp-.5)
+              +(M.y-.5)*.30+storm*.05*sin(x*8.+T*9.);
+    float d=p.y-base;
+    float hgt=.16+.38*fbm(vec2(x*1.6+ph*3.,t*.06+fl*4.));
+    float u=d/hgt;
+    float ray=fbm(vec2(x*26.+warp*14., t*.18+fl*3.));
+    float fine=vn(vec2(x*110.+fl*13., t*.4));
+    float mask=smoothstep(.22,.62,fbm(vec2(x*.9+ph*1.7,t*.04+fl*2.)));
+    float rays=(.25+1.1*ray*ray)*(.65+.35*fine)*(.2+.95*mask);
+    float edge=smoothstep(-.015,.035,d);
+    float fall=exp(-max(u,0.)*1.5);
+    float I=edge*fall*rays;
+    I+=exp(-abs(d)*60.)*.30*rays;                    // bright lower rim
+    vec3 col=mix(c0,c1,smoothstep(.0,.30,u));
+    col=mix(col,c2,smoothstep(.25,1.0,u));
+    col=mix(col,c3,smoothstep(.9,2.6,u));
+    acc+=col*I*(1.-fl*.16);
+  }
+  return acc*bright*(1.+storm)*.62;
+}
+
+float treeLayer(vec2 uv,float asp,float cells,float baseY,float hmin,float hmax,float seed){
+  float x=uv.x*asp*cells, id=floor(x), m=0.;
+  for(int k=-2;k<=2;k++){
+    float i=id+float(k);
+    float r=h21(vec2(i,seed)), r2=h21(vec2(i,seed+7.));
+    float cx=i+.5+(r2-.5)*.9;
+    float h=mix(hmin,hmax,r*r);
+    float yn=(uv.y-baseY)/h;
+    if(yn>0.&&yn<1.){
+      float tier=fract(yn*8.+r*3.);
+      float w=(1.-yn)*(.30+.42*tier)*1.25;
+      m=max(m,step(abs(x-cx),w));
+    }
+  }
+  return max(m,step(uv.y,baseY+.004));
+}
+
+vec3 stars(vec2 uv,float asp){
+  vec3 s=vec3(0.);
+  for(int k=0;k<2;k++){
+    float sc=k==0?110.:55.;
+    vec2 g=uv*vec2(asp,1.)*sc; vec2 id=floor(g); vec2 f=fract(g);
+    float r=h21(id+float(k)*17.);
+    vec2 c=vec2(h21(id+3.),h21(id+9.))*.7+.15;
+    float on=step(1.-starDen*(k==0?.10:.04),r);
+    float tw=.65+.35*sin(T*1.7+r*80.);
+    float b=on*smoothstep(k==0?.13:.18,0.,length(f-c))*tw*(k==0?.8:1.3);
+    s+=vec3(.9,.93,1.)*b;
+  }
+  return s;
+}
+
+void main(){
+  vec2 uv=gl_FragCoord.xy/R; float asp=R.x/R.y; float t=T*.6;
+  float H = ground==0 ? .17 : (ground==1 ? .38 : 0.);
+  float x=uv.x*asp;
+  vec3 col;
+
+  if(uv.y>=H){
+    float ys=(uv.y-H)/(1.-H);
+    vec3 sky=mix(vec3(.17,.10,.26),vec3(.025,.02,.09),pow(ys,.55));
+    sky+=vec3(.20,.08,.22)*fbm(vec2(x*.9,ys*1.4)+t*.02)*.35*(1.-ys);
+    vec3 au=aurora(vec2(x,ys),t);
+    float lum=dot(au,vec3(.33));
+    col=sky+au+stars(uv,asp)*(1.-clamp(lum*1.6,0.,.85))*smoothstep(0.,.15,ys);
+    if(ground==0){
+      float far=treeLayer(uv,asp,38.,H-.01,.03,.11,3.);
+      col=mix(col,vec3(.06,.04,.12)+au*.04,far*.85);
+      float near=treeLayer(uv,asp,20.,H-.015,.05,.20,11.);
+      col=mix(col,vec3(.008,.010,.018),near);
+    } else if(ground==1){
+      float far=treeLayer(uv,asp,38.,H-.005,.012,.06,3.);
+      col=mix(col,vec3(.02,.02,.05),far);
+    }
+  } else if(ground==0){
+    float g=(H-uv.y)/H;
+    vec3 au=aurora(vec2(1.2+x*.15, .22),t);
+    float bump=fbm(vec2(x*18.,g*14.));
+    vec3 snow=mix(vec3(.10,.08,.17),vec3(.60,.54,.70),pow(g,.55));
+    snow+=au*.55;
+    snow*=.80+.35*bump;
+    float cx=.70+g*.10, rw=.012+g*.16;
+    float rd=abs(uv.x-cx);
+    float road=smoothstep(rw,rw*.55,rd);
+    vec3 roadCol=snow*.92+vec3(.03,.025,.04);
+    roadCol*=1.-.25*smoothstep(.02,.0,abs(rd-rw*.3))*g;   // tracks
+    col=mix(snow,roadCol,road);
+    col=mix(col,vec3(.01,.012,.02),smoothstep(.10,.0,g)*.85);  // dark at horizon
+  } else { // sea
+    float g=(H-uv.y)/H;
+    vec2 q=vec2(x+(fbm(vec2(x*14.,uv.y*70.+T*.4))-.5)*.05*(.3+g), (H+g*H*.6-H)/(1.-H));
+    q.y=g*.7;
+    vec3 au=aurora(q,t);
+    col=vec3(.02,.025,.06)+au*(.65-g*.3)*(.75+.5*fbm(vec2(x*4.,uv.y*90.)));
+  }
+
+  col=1.-exp(-col*1.7);
+  col=pow(col,vec3(.95));
+  col*=1.-.35*dot(uv-.5,uv-.5)*2.;   // vignette
+  o=vec4(col,1.);
+}`;
+  var VS = '#version 300 es\nin vec2 a; void main(){ gl_Position = vec4(a,0.,1.); }';
+
+  var art = { S: { mx: .5, my: .5, tx: .5, ty: .5, storm: 0, time: 0 }, pal: 0, ground: 0 };
+  (function initArt() {
+    var cv = $('art'), gl = cv.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
+    if (!gl) { $('artFallback').hidden = false; return; }
+    function sh(t, s) { var o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o);
+      if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(o)); } return o; }
+    var pr = gl.createProgram();
+    gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS));
+    gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { $('artFallback').hidden = false; return; }
+    gl.useProgram(pr);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    var loc = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    var U = function (n) { return gl.getUniformLocation(pr, n); };
+    var u = { R: U('R'), T: U('T'), M: U('M'), storm: U('storm'), bright: U('bright'), starDen: U('starDen'), layers: U('layers'), ground: U('ground'), pal: U('pal') };
+    var S = art.S, vis = visibleFlag(cv), last = performance.now();
+
+    function aim(e) {
+      var r = cv.getBoundingClientRect();
+      S.tx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+      S.ty = Math.min(1, Math.max(0, 1 - (e.clientY - r.top) / r.height));
+    }
+    cv.addEventListener('pointermove', aim);
+    cv.addEventListener('pointerdown', function (e) { aim(e); S.storm = 1; });
+    cv.addEventListener('keydown', function (e) {
+      var k = e.key, st = .06;
+      if (k === 'ArrowLeft') S.tx = Math.max(0, S.tx - st);
+      else if (k === 'ArrowRight') S.tx = Math.min(1, S.tx + st);
+      else if (k === 'ArrowUp') S.ty = Math.min(1, S.ty + st);
+      else if (k === 'ArrowDown') S.ty = Math.max(0, S.ty - st);
+      else if (k === 'Enter' || k === ' ') S.storm = 1;
+      else return;
+      e.preventDefault();
+    });
+    $('stormBtn').addEventListener('click', function () { S.storm = 1; });
+    $('shotBtn').addEventListener('click', function () {
+      draw(0);
+      var a = document.createElement('a'); a.download = 'aurora.png'; a.href = cv.toDataURL('image/png'); a.click();
+    });
+    $('palChips').addEventListener('click', function (e) { var b = e.target.closest('[data-pal]'); if (!b) return; art.pal = +b.dataset.pal; setPressed($('palChips'), b, 'data-pal'); });
+    $('groundChips').addEventListener('click', function (e) { var b = e.target.closest('[data-ground]'); if (!b) return; art.ground = +b.dataset.ground; setPressed($('groundChips'), b, 'data-ground'); });
+    ['bright', 'speed', 'layers'].forEach(function (id) {
+      var el = $(id), lab = $(id + 'Lab');
+      el.addEventListener('input', function () { lab.textContent = id === 'layers' ? el.value : (+el.value).toFixed(2); });
+    });
+    if (reduce) { $('speed').value = 0.15; $('speedLab').textContent = '0.15'; }
+
+    function draw(dt) {
+      var s = sized(cv); gl.viewport(0, 0, cv.width, cv.height);
+      S.time += dt * parseFloat($('speed').value);
+      S.mx += (S.tx - S.mx) * Math.min(dt * 3, 1); S.my += (S.ty - S.my) * Math.min(dt * 3, 1);
+      S.storm = Math.max(0, S.storm - dt * .5);
+      gl.uniform2f(u.R, cv.width, cv.height); gl.uniform1f(u.T, S.time);
+      gl.uniform2f(u.M, S.mx, S.my); gl.uniform1f(u.storm, S.storm);
+      gl.uniform1f(u.bright, parseFloat($('bright').value)); gl.uniform1f(u.starDen, .6);
+      gl.uniform1i(u.layers, parseInt($('layers').value, 10));
+      gl.uniform1i(u.ground, art.ground); gl.uniform1i(u.pal, art.pal);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    function frame(now) {
+      var dt = Math.min((now - last) / 1000, .1); last = now;
+      if (vis.on && !document.hidden) draw(dt);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+
+  /* =====================================================
+     Part 2a · magnetosphere cross-section (2D canvas)
+     World units: Earth radius = 1, Sun on the left, magnetotail to the right.
+     ===================================================== */
+  var CAPTIONS = [
+    '太阳不停地吹出带电粒子流，叫太阳风。它主要由质子和电子组成，到达地球通常要两三天。点上面的步骤，一次看一段。',
+    '① 太阳风：粒子从左边来，一路向右。这一步里没有任何发光，粒子在真空里是看不见的。',
+    '② 磁层：地球磁场像一个罩子，把大部分粒子推开，沿边界绕过去。只有一小部分从夜侧的磁尾进入，并且在那里得到能量。',
+    '③ 沿磁力线：进入的粒子被磁力线抓住，一边绕圈一边朝两个极区前进。磁力线越靠近地面越竖直，所以到达的位置在磁纬约 66° 附近。',
+    '④ 撞上大气：粒子冲进约 100 到 250 km 的稀薄空气，撞击氧原子和氮分子。被撞的原子放出光，这就是极光。南北两极同时发生。'
+  ];
+  var mag = { stage: 0 };
+  (function initMag() {
+    var cv = $('mag'), ctx = cv.getContext('2d'), vis = visibleFlag(cv);
+    var X0 = -8.5, X1 = 13, YH = 5.4;       // world window
+    var L_FIELD = [2, 3.4, 5];               // closed lines drawn both sides
+    var L_TAIL = 6.5, STRETCH = 1.7;         // tail line particles ride on
+
+    function dipole(L, lam, st) {            // point on field line, stretched on the night side
+      var c = Math.cos(lam), r = L * c * c, x = r * c, y = r * Math.sin(lam);
+      if (st > 1 && x > 0) x *= 1 + (st - 1) * Math.min(1, (r - 1) / (L - 1));
+      return [x, y];
+    }
+    function lamMax(L) { return Math.acos(Math.sqrt(1 / L)); }
+    function mpX(y) { return -6 + y * y / 6; }          // magnetopause (schematic)
+    function mpTop() { return 4.4; }
+
+    function poly(pts) {                      // add cumulative length
+      var cum = [0];
+      for (var i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+      return { p: pts, c: cum, len: cum[cum.length - 1] };
+    }
+    function at(P, s) {
+      s = Math.max(0, Math.min(P.len, s));
+      var i = 1; while (i < P.c.length - 1 && P.c[i] < s) i++;
+      var t = (s - P.c[i - 1]) / ((P.c[i] - P.c[i - 1]) || 1);
+      return [P.p[i - 1][0] + (P.p[i][0] - P.p[i - 1][0]) * t, P.p[i - 1][1] + (P.p[i][1] - P.p[i - 1][1]) * t];
+    }
+    function deflectPath(y0) {
+      var sg = y0 < 0 ? -1 : 1, a = Math.abs(y0), pts = [[X0, y0], [mpX(a), y0]];
+      for (var y = a; y < mpTop(); y += .25) pts.push([mpX(y) + .0, sg * y]);
+      pts.push([X1 + 1, sg * mpTop()]);
+      return poly(pts);
+    }
+    function capturePath(sg, toNorth) {
+      var a = 3.9, pts = [[X0, sg * a], [mpX(a), sg * a]];
+      for (var y = a; y < mpTop(); y += .25) pts.push([mpX(y), sg * y]);
+      pts.push([4.2, sg * mpTop()]);
+      var eq = dipole(L_TAIL, 0, STRETCH);
+      pts.push([eq[0] - .6, sg * 1.2], [eq[0], 0]);               // into the plasma sheet
+      var lm = lamMax(L_TAIL), dir = toNorth ? 1 : -1, n = 60, mark = pts.length;
+      for (var i = 1; i <= n; i++) pts.push(dipole(L_TAIL, dir * lm * i / n, STRETCH));
+      var P = poly(pts); P.fieldFrom = P.c[mark - 1]; P.dir = dir; return P;
+    }
+    var paths = { defl: [], cap: [] };
+    [-4.2, -3.4, -2.6, -1.8, -1, -.35, .35, 1, 1.8, 2.6, 3.4, 4.2].forEach(function (y) { paths.defl.push(deflectPath(y)); });
+    paths.cap = [capturePath(-1, true), capturePath(1, true), capturePath(-1, false), capturePath(1, false)];
+
+    var parts = [], flashes = [], lastT = performance.now(), acc = 0;
+    function spawn() {
+      var capt = Math.random() < .4;
+      var P = capt ? paths.cap[Math.floor(Math.random() * paths.cap.length)] : paths.defl[Math.floor(Math.random() * paths.defl.length)];
+      parts.push({ P: P, s: 0, capt: capt, ph: Math.random() * 6.28, v: capt ? 4.2 : 3.2 });
+    }
+
+    var chips = $('stageChips');
+    chips.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-st]'); if (!b) return;
+      mag.stage = +b.dataset.st; setPressed(chips, b, 'data-st'); $('caption').textContent = CAPTIONS[mag.stage];
+    });
+    $('caption').textContent = CAPTIONS[0];
+
+    function lit(st, which) { return st === 0 || st === which; }
+
+    function draw(now) {
+      var dt = Math.min((now - lastT) / 1000, .08); lastT = now;
+      var m = sized(cv), W = m.w, H = m.h;
+      ctx.setTransform(m.d, 0, 0, m.d, 0, 0);
+      // fit world window into the frame, keep aspect
+      var sc = Math.min(W / (X1 - X0), H / (2 * YH)), cx = W / 2 - (X0 + X1) / 2 * sc, cy = H / 2;
+      var wx = function (x) { return cx + x * sc; }, wy = function (y) { return cy - y * sc; };
+      var st = mag.stage;
+
+      var bg = ctx.createLinearGradient(0, 0, W, 0); bg.addColorStop(0, '#171127'); bg.addColorStop(.4, '#0c0a1d'); bg.addColorStop(1, '#06050f');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+      // sun glow on the left
+      var sg = ctx.createRadialGradient(wx(X0 - 1.5), cy, 0, wx(X0 - 1.5), cy, sc * 4.5);
+      sg.addColorStop(0, 'rgba(255,200,90,.75)'); sg.addColorStop(.35, 'rgba(255,150,60,.22)'); sg.addColorStop(1, 'rgba(255,150,60,0)');
+      ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H);
+
+      // magnetopause
+      ctx.save(); ctx.globalAlpha = lit(st, 2) ? 1 : .25;
+      ctx.strokeStyle = 'rgba(150,200,255,.75)'; ctx.setLineDash([6, 5]); ctx.lineWidth = 1.5;
+      [-1, 1].forEach(function (s) {
+        ctx.beginPath();
+        for (var y = 0; y <= mpTop() + .001; y += .2) { var px = wx(mpX(y)), py = wy(s * y); y === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+        ctx.lineTo(wx(X1 + 1), wy(s * mpTop())); ctx.stroke();
+      });
+      ctx.setLineDash([]); ctx.restore();
+
+      // field lines
+      ctx.save(); ctx.globalAlpha = lit(st, 2) || st === 3 ? 1 : .3;
+      ctx.lineWidth = 1.2;
+      function fl(L, stch, side, col) {
+        var lm = lamMax(L); ctx.strokeStyle = col; ctx.beginPath();
+        for (var i = 0; i <= 80; i++) { var lam = -lm + 2 * lm * i / 80, p = dipole(L, lam, stch), x = side * p[0];
+          var X = wx(x), Y = wy(p[1]); i === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y); }
+        ctx.stroke();
+      }
+      L_FIELD.forEach(function (L) { fl(L, 1, 1, 'rgba(160,190,255,.4)'); fl(L, 1, -1, 'rgba(160,190,255,.4)'); });
+      fl(L_TAIL, STRETCH, 1, 'rgba(255,170,230,.65)');
+      ctx.restore();
+
+      // Earth + atmosphere
+      var eg = ctx.createRadialGradient(wx(-.35), wy(.35), 0, wx(0), wy(0), sc * 1.05);
+      eg.addColorStop(0, '#4a7dc9'); eg.addColorStop(.6, '#1f3f86'); eg.addColorStop(1, '#0c1c44');
+      ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(wx(0), wy(0), sc, 0, 6.2832); ctx.fill();
+      ctx.save(); ctx.beginPath(); ctx.arc(wx(0), wy(0), sc, 0, 6.2832); ctx.clip();
+      var nt = ctx.createLinearGradient(wx(-1), 0, wx(1), 0); nt.addColorStop(0, 'rgba(0,0,0,0)'); nt.addColorStop(1, 'rgba(0,0,10,.65)');
+      ctx.fillStyle = nt; ctx.fillRect(wx(-1), wy(1), 2 * sc, 2 * sc); ctx.restore();
+      ctx.globalAlpha = lit(st, 4) ? 1 : .35; ctx.strokeStyle = 'rgba(120,230,170,.8)'; ctx.lineWidth = Math.max(2, sc * .08);
+      ctx.beginPath(); ctx.arc(wx(0), wy(0), sc * 1.045, 0, 6.2832); ctx.stroke(); ctx.globalAlpha = 1;
+
+      // spawn / move particles
+      acc += dt * (reduce ? 4 : 13);
+      while (acc > 1) { acc -= 1; if (parts.length < 170) spawn(); }
+      for (var i = parts.length - 1; i >= 0; i--) {
+        var p = parts[i], on = p.capt ? (st === 0 || st >= 1) : (st === 0 || st === 1 || st === 2);
+        if (vis.on) p.s += p.v * dt * (reduce ? .4 : 1);
+        if (p.s >= p.P.len) {
+          if (p.capt) flashes.push({ x: p.P.p[p.P.p.length - 1][0], y: p.P.p[p.P.p.length - 1][1], t: 0 });
+          parts.splice(i, 1); continue;
+        }
+        var pos = at(p.P, p.s), px = pos[0], py = pos[1];
+        var onField = p.capt && p.s > p.P.fieldFrom;
+        if (onField) { var w = .09 * Math.sin(p.s * 6 + p.ph); px += w; }
+        var vis2 = p.capt ? (st === 0 || st === 3 || st === 1 || st === 2 || st === 4) : (st === 0 || st === 1 || st === 2);
+        if (!vis2) continue;
+        ctx.fillStyle = p.capt ? (onField ? 'rgba(255,190,240,.95)' : 'rgba(255,235,170,.9)') : 'rgba(255,225,140,.6)';
+        ctx.globalAlpha = (st === 0 || (st === 1) || (st === 2) || (st === 3 && onField) || (st === 4 && onField)) ? 1 : .35;
+        var tr = at(p.P, p.s - .5); ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(wx(tr[0]), wy(tr[1])); ctx.lineTo(wx(px), wy(py)); ctx.stroke();
+        ctx.beginPath(); ctx.arc(wx(px), wy(py), p.capt ? 2.8 : 2.3, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1;
+      }
+
+      // landing flashes (the actual aurora)
+      for (var j = flashes.length - 1; j >= 0; j--) {
+        var f = flashes[j]; f.t += dt; if (f.t > 1.6) { flashes.splice(j, 1); continue; }
+        var a = 1 - f.t / 1.6, R = sc * (.25 + f.t * .5);
+        var fg = ctx.createRadialGradient(wx(f.x), wy(f.y), 0, wx(f.x), wy(f.y), R);
+        fg.addColorStop(0, 'rgba(160,255,190,' + (.85 * a) + ')'); fg.addColorStop(1, 'rgba(160,255,190,0)');
+        ctx.globalAlpha = lit(st, 4) || st === 3 ? 1 : .5;
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(wx(f.x), wy(f.y), R, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1;
+      }
+
+      // labels
+      function label(t, x, y, which, align) {
+        ctx.font = '700 ' + Math.max(11, Math.min(14, sc * .62)) + 'px "Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif';
+        ctx.textAlign = align || 'left'; ctx.globalAlpha = lit(st, which) ? 1 : .25;
+        var wd = ctx.measureText(t).width, X = wx(x), Y = wy(y);
+        ctx.fillStyle = 'rgba(239,238,233,.92)'; ctx.fillRect(align === 'center' ? X - wd / 2 - 5 : (align === 'right' ? X - wd - 5 : X - 5), Y - 13, wd + 10, 19);
+        ctx.fillStyle = '#1d1e1b'; ctx.fillText(t, X, Y); ctx.globalAlpha = 1;
+      }
+      label('① 太阳风', X0 + .4, -4.6, 1);
+      label('② 磁层边界', -6.9, 3.6, 2);
+      label('③ 沿磁力线', 6.2, -1.4, 3);
+      label('④ 极区大气', 1.7, 1.9, 4);
+      ctx.fillStyle = 'rgba(255,225,160,.95)'; ctx.font = '700 12px "Noto Sans SC",sans-serif'; ctx.textAlign = 'left'; ctx.fillText('太阳 →', wx(X0) + 6, wy(.2));
+      ctx.fillStyle = 'rgba(230,230,240,.7)'; ctx.fillText('夜侧磁尾 →', wx(8.4), wy(.7));
+    }
+    function loop(now) { if (vis.on && !document.hidden) draw(now); else lastT = now; requestAnimationFrame(loop); }
+    requestAnimationFrame(loop);
+  })();
+
+  /* =====================================================
+     Part 2b · altitude profile (2D canvas)
+     ===================================================== */
+  (function initProf() {
+    var cv = $('prof'), ctx = cv.getContext('2d'), vis = visibleFlag(cv);
+    var H0 = 70, H1 = 330;                                       // altitude window, km
+    var TAB = [[.1, 250], [.5, 190], [1, 160], [3, 130], [10, 110], [30, 97], [100, 85]];
+    function sstep(a, b, x) { var t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+    function altOf(E) {
+      var le = Math.log(E);
+      for (var i = 1; i < TAB.length; i++) if (E <= TAB[i][0]) {
+        var a = TAB[i - 1], b = TAB[i], t = (le - Math.log(a[0])) / (Math.log(b[0]) - Math.log(a[0]));
+        return a[1] + (b[1] - a[1]) * t;
+      }
+      return TAB[TAB.length - 1][1];
+    }
+    function wts(h) {                                             // [pink, green, red]
+      return [1 - sstep(95, 115, h), sstep(90, 105, h) * (1 - sstep(170, 250, h)), sstep(150, 240, h)];
+    }
+    var COL = { pink: [236, 100, 190], green: [90, 250, 130], red: [240, 60, 70] };
+    function mix(w, k) {
+      var s = w[0] + w[1] + w[2] || 1;
+      return [0, 1, 2].map(function (c) { return (w[0] * COL.pink[c] + w[1] * COL.green[c] + w[2] * COL.red[c]) / s * k; });
+    }
+    var E = 3, peak = altOf(E);
+    function setE(v) {
+      E = Math.max(.1, Math.min(100, v)); peak = altOf(E);
+      $('energy').value = (Math.log10(E) + 1) / 3;
+      $('eLab').textContent = (E < 1 ? E.toFixed(2).replace(/0$/, '') : E < 10 ? E.toFixed(1).replace(/\.0$/, '') : Math.round(E)) + ' keV';
+      $('altRead').textContent = '约 ' + Math.round(peak / 5) * 5 + ' km';
+      var w = wts(peak), names = ['氮分子的粉紫光', '氧原子 557.7 nm 的绿光', '氧原子 630.0 nm 的红光'], dom = w.indexOf(Math.max.apply(null, w));
+      var rest = []; w.forEach(function (x, i) { if (i !== dom && x > .3) rest.push(names[i]); });
+      $('altGas').innerHTML = '<span class="sw" style="background:rgb(' + mix(w, 1).map(Math.round).join(',') + ')"></span>这里以<strong>' + names[dom] + '</strong>为主' + (rest.length ? '，同时带一些' + rest.join('、') : '') + '。';
+    }
+    $('energy').addEventListener('input', function (e) { setE(Math.pow(10, +e.target.value * 3 - 1)); });
+    document.querySelectorAll('[data-e]').forEach(function (b) { b.addEventListener('click', function () { setE(+b.dataset.e); }); });
+    setE(3);
+
+    function draw(now) {
+      var m = sized(cv), W = m.w, H = m.h; ctx.setTransform(m.d, 0, 0, m.d, 0, 0);
+      var top = 34, bot = H - 26, ay = function (h) { return bot - (h - H0) / (H1 - H0) * (bot - top); };
+      ctx.fillStyle = '#0a0818'; ctx.fillRect(0, 0, W, H);
+      var sk = ctx.createLinearGradient(0, top, 0, bot); sk.addColorStop(0, '#0a0818'); sk.addColorStop(1, '#241a3e');
+      ctx.fillStyle = sk; ctx.fillRect(0, top, W, bot - top);
+
+      // axis ticks
+      ctx.font = '11px "IBM Plex Mono",monospace'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(239,238,233,.6)'; ctx.strokeStyle = 'rgba(239,238,233,.14)'; ctx.lineWidth = 1;
+      for (var h = 100; h <= 300; h += 50) { ctx.beginPath(); ctx.moveTo(0, ay(h)); ctx.lineTo(W, ay(h)); ctx.stroke(); ctx.fillText(h + ' km', 6, ay(h) - 3); }
+
+      // left bar: where each colour tends to appear
+      var bx = 62, bw = 14;
+      for (var y = top; y <= bot; y += 2) { var hh = H0 + (bot - y) / (bot - top) * (H1 - H0), w = wts(hh), c = mix(w, 1);
+        var total = w[0] + w[1] + w[2]; ctx.fillStyle = total < .02 ? 'rgba(255,255,255,.05)' : 'rgb(' + c.map(Math.round).join(',') + ')'; ctx.fillRect(bx, y, bw, 2); }
+      ctx.fillStyle = 'rgba(239,238,233,.75)'; ctx.font = '700 11px "Noto Sans SC",sans-serif'; ctx.fillText('倾向', bx - 4, top - 10);
+
+      // glow curtain: asymmetric profile around the peak (sharp bottom, soft top)
+      var cx0 = 100, cx1 = W * .72, sLow = Math.max(4, peak * .05), sHigh = Math.max(10, peak * .2);
+      var flick = .93 + .07 * Math.sin(now / 520);
+      for (var y2 = top; y2 <= bot; y2++) {
+        var h2 = H0 + (bot - y2) / (bot - top) * (H1 - H0), d = h2 - peak, sg = d < 0 ? sLow : sHigh, I = Math.exp(-d * d / (2 * sg * sg)) * flick;
+        if (I < .01) continue; var cc = mix(wts(h2), 1), a = Math.min(1, I * 1.5);
+        var gr = ctx.createLinearGradient(cx0, 0, cx1, 0);
+        gr.addColorStop(0, 'rgba(' + cc.map(Math.round).join(',') + ',' + (a * .95) + ')'); gr.addColorStop(1, 'rgba(' + cc.map(Math.round).join(',') + ',' + (a * .2) + ')');
+        ctx.fillStyle = gr; ctx.fillRect(cx0, y2, cx1 - cx0, 1.2);
+      }
+      // vertical ray texture
+      ctx.globalCompositeOperation = 'multiply';
+      for (var x = cx0; x < cx1; x += 5) { var rv = .86 + .14 * Math.sin(x * .9 + now / 900) * Math.sin(x * .31 - now / 1400); ctx.fillStyle = 'rgba(255,255,255,' + rv + ')'; ctx.fillRect(x, top, 5, bot - top); }
+      ctx.globalCompositeOperation = 'source-over';
+
+      // peak marker
+      ctx.strokeStyle = 'rgba(239,238,233,.9)'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(bx + bw + 4, ay(peak)); ctx.lineTo(cx1 + 10, ay(peak)); ctx.stroke(); ctx.setLineDash([]);
+
+      // air density (exp), right edge
+      var dx0 = W - 74, dx1 = W - 12;
+      ctx.strokeStyle = 'rgba(160,200,255,.85)'; ctx.lineWidth = 1.6; ctx.beginPath();
+      for (var hk = H0; hk <= H1; hk += 4) { var rho = Math.exp(-(hk - H0) / 45), X = dx1 - (dx1 - dx0) * rho, Y = ay(hk); hk === H0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y); }
+      ctx.stroke(); ctx.fillStyle = 'rgba(160,200,255,.9)'; ctx.font = '700 11px "Noto Sans SC",sans-serif'; ctx.textAlign = 'right'; ctx.fillText('空气密度', W - 8, top - 10);
+      ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(239,238,233,.75)'; ctx.fillText('↑ 粒子从上方来', cx0, top - 10);
+      ctx.fillStyle = 'rgba(255,200,230,.9)'; ctx.fillText('下缘清晰', cx0 + 4, ay(peak) + 16);
+      ctx.fillStyle = 'rgba(200,255,220,.8)'; ctx.fillText('向上渐隐', cx0 + 4, ay(peak) - 22 - (peak > 280 ? 14 : 0));
+    }
+    function loop(now) { if (vis.on && !document.hidden) draw(now); requestAnimationFrame(loop); }
+    requestAnimationFrame(loop);
+  })();
+})();
+</script>
+</body>
+</html>
