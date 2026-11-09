@@ -139,7 +139,7 @@
     navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } }).then(function (stream) {
       var Ctx = window.AudioContext || window.webkitAudioContext, ctx = new Ctx(), an = ctx.createAnalyser();
       an.fftSize = 1024; an.smoothingTimeConstant = .6; ctx.createMediaStreamSource(stream).connect(an);
-      mic = { stream: stream, ctx: ctx, an: an, buf: new Float32Array(an.fftSize), floor: .005, env: 0 };
+      mic = { stream: stream, ctx: ctx, an: an, buf: new Float32Array(an.fftSize), floor: -60, hold: 0, env: 0 };
       $('micBtn').setAttribute('aria-pressed', 'true');
       toast('轻声说话、哼一句、或者只是呼吸 · Whisper, hum, or simply breathe');
     }).catch(function () { toast('没有拿到麦克风，仍可用指针 · No microphone, pointer still works'); });
@@ -148,13 +148,18 @@
     if (!mic) return 0;
     mic.an.getFloatTimeDomainData(mic.buf);
     var sum = 0; for (var i = 0; i < mic.buf.length; i++) sum += mic.buf[i] * mic.buf[i];
-    var rms = Math.sqrt(sum / mic.buf.length);
-    // noise floor: follows quiet moments down quickly, creeps up very slowly, so speaking never raises it
-    mic.floor += (rms - mic.floor) * Math.min(dt * (rms < mic.floor ? 3 : .02), 1);
-    mic.floor = Math.min(mic.floor, .03);
-    var target = Math.min(1, Math.max(0, rms - mic.floor * 1.4 - .002) * 28);
-    // soft envelope: rises over ~1 s, falls over ~3 s
-    mic.env += (target - mic.env) * Math.min(dt * (target > mic.env ? 1.6 : .4), 1);
+    return micLevel(Math.sqrt(sum / mic.buf.length), dt);
+  }
+  // Level in dB above the room's noise floor, so a whisper and a breath both register.
+  function micLevel(rms, dt) {
+    var db = 20 * Math.log(Math.max(rms, 1e-5)) / Math.LN10;
+    // floor follows quiet moments down quickly and creeps up very slowly, so speaking does not raise it
+    mic.floor += (db - mic.floor) * Math.min(dt * (db < mic.floor ? 3 : .01), 1);
+    mic.floor = Math.max(-70, Math.min(-45, mic.floor));
+    var target = Math.max(0, Math.min(1, (db - mic.floor - 8) / 22));
+    // peak hold: the gaps between syllables should not drop the light
+    mic.hold = Math.max(target, mic.hold - dt * 1.2);
+    mic.env += (mic.hold - mic.env) * Math.min(dt * (mic.hold > mic.env ? 2.5 : .5), 1);
     return mic.env;
   }
 
