@@ -3,7 +3,12 @@
     "title": "地球上的东南西北",
     "subject": "地理",
     "description": "拖动 3D 地球、拉动时间条，看东西南北怎么来、太阳在不同季节和纬度从哪边升落。",
-    "url": "tools/earth-directions.html"
+    "url": "tools/earth-directions.html",
+    "related": [
+      "tools/solar-system.html",
+      "tools/moon-phases.html",
+      "tools/seasons.html"
+    ]
   },
   {
     "title": "同一条时间线上",
@@ -15,30 +20,62 @@
     "title": "太阳系的公转",
     "subject": "天文",
     "description": "八大行星绕太阳走椭圆轨道，可调速度和比例、点行星看数据；还能看清四个节气地球在轨道上的位置，以及地轴为什么始终指向同一方向。",
-    "url": "tools/solar-system.html"
+    "url": "tools/solar-system.html",
+    "related": [
+      "tools/earth-directions.html",
+      "tools/moon-phases.html",
+      "tools/seasons.html"
+    ]
   },
   {
     "title": "生活里的光",
     "subject": "物理",
     "description": "从蓝天晚霞到肥皂膜的彩色，再到池底的光纹：切换生活场景，调节太阳、膜厚和水面，观察散射、干涉与折射。",
-    "url": "tools/light.html"
+    "url": "tools/light.html",
+    "related": [
+      "tools/belt-of-venus.html",
+      "tools/aurora.html"
+    ]
   },
   {
     "title": "维纳斯带",
     "subject": "物理",
     "description": "拖动日落，同时观察东边天空与地球光路剖面，看地影怎样抬升、粉色暮光怎样形成。",
-    "url": "tools/belt-of-venus.html"
+    "url": "tools/belt-of-venus.html",
+    "related": [
+      "tools/light.html",
+      "tools/earth-directions.html"
+    ]
   },
   {
     "title": "月相为什么会变",
     "subject": "天文",
     "description": "拖动月球绕地球走，或拉动一个月和一天里的时刻：一边看日月地的位置，一边看地面上月亮的形状、高低和出没。",
-    "url": "tools/moon-phases.html"
+    "url": "tools/moon-phases.html",
+    "related": [
+      "tools/solar-system.html",
+      "tools/earth-directions.html"
+    ]
   },
   {
     "title": "极光",
     "subject": "物理",
     "description": "先看一块可以用手牵引、调色的实时极光夜空，再顺着太阳风、地球磁场到大气，拖动粒子能量，看光在哪个高度、为什么是绿、红或粉紫。",
-    "url": "tools/aurora.html"
+    "url": "tools/aurora.html",
+    "related": [
+      "tools/light.html",
+      "tools/belt-of-venus.html"
+    ]
+  },
+  {
+    "title": "四季与昼长",
+    "subject": "地理",
+    "description": "拖动日期和纬度，看倾斜的地轴怎样把纬线切成白天和黑夜：昼长一年怎么变、太阳正午升多高，以及极昼极夜是怎么来的。",
+    "url": "tools/seasons.html",
+    "related": [
+      "tools/earth-directions.html",
+      "tools/solar-system.html",
+      "tools/moon-phases.html"
+    ]
   }
 ]
