@@ -82,6 +82,18 @@
     "title": "用转圈画出方波",
     "subject": "数学",
     "description": "一串越转越快的圆，笔尖的高度叠成波形：选方波、锯齿波或三角波，调圆的个数，看波怎样逼近目标，以及竖边附近总会冲过头的吉布斯现象。",
-    "url": "tools/fourier.html"
+    "url": "tools/fourier.html",
+    "related": [
+      "tools/scales.html"
+    ]
+  },
+  {
+    "title": "音阶与音律",
+    "subject": "音乐",
+    "description": "点一个键和中央 C 一起响，看两个波怎样对齐；在十二平均律、纯律和五度相生律（三分损益）之间切换，用耳朵和数字比较同一个音程准不准。",
+    "url": "tools/scales.html",
+    "related": [
+      "tools/fourier.html"
+    ]
   }
 ]

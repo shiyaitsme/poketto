@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>音阶与音律 · Poketto</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/poketto.css">
+<style>
+  .pk-page { max-width: 1120px; }
+  .bench { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, .85fr); gap: 22px; align-items: start; }
+  .views { display: grid; gap: 16px; min-width: 0; }
+  .frame { position: relative; padding: 0; overflow: hidden; --l: 16px; }
+  .frame.wave { height: 300px; }
+  .frame.dev { height: 250px; }
+  .frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .badge { position: absolute; z-index: 5; top: 12px; left: 12px; margin: 0; pointer-events: none; padding: 1px 7px; background: var(--veil); }
+  .legend { margin: 0; max-width: 70ch; }
+  .keys { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 4px; padding: 14px 16px; }
+  .key {
+    all: unset; box-sizing: border-box; cursor: pointer; text-align: center; min-width: 0;
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 2px;
+    height: 104px; padding: 6px 0 8px; border: 1.5px solid var(--ink); background: #f7f6f1; color: var(--ink);
+    transition: background-color .15s ease;
+  }
+  .key.black { background: var(--ink); color: #efeee9; height: 84px; }
+  .key:hover { background-color: rgba(185, 224, 76, .55); }
+  .key.black:hover { background-color: #3b4a22; }
+  .key[aria-pressed="true"] { background-color: var(--lime); color: var(--ink); box-shadow: inset 0 -5px 0 var(--ink); }
+  .key:focus-visible { outline: 2px solid var(--leaf); outline-offset: 2px; }
+  .key .nm { font-family: var(--label); font-weight: 800; font-size: 12.5px; line-height: 1.1; }
+  .key .jp { font-family: var(--mono); font-size: 11px; opacity: .8; line-height: 1.1; }
+  .key .gs { font-weight: 700; font-size: 11px; line-height: 1.1; min-height: 12px; color: var(--vermilion); }
+  .key.black .gs { color: #f0a090; }
+  .bench-ctrl { display: grid; gap: 16px; min-width: 0; }
+  .panel { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
+  .big { font-weight: 900; font-size: clamp(26px, 3.4vw, 36px); line-height: 1.2; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .lab { font-size: 13px; color: var(--ink-2); margin: 0; }
+  .lab strong { color: var(--ink); font-weight: 700; }
+  .sub { font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .notes { display: grid; gap: 12px; max-width: 720px; }
+  @media (max-width: 860px) {
+    .bench { grid-template-columns: minmax(0, 1fr); }
+    .frame.wave { height: 280px; }
+  }
+  @media (max-width: 520px) {
+    .keys { padding: 12px 8px; gap: 2px; }
+    .key .jp { display: none; }
+    .key .nm { font-size: 11px; }
+    .key .gs { font-size: 10px; }
+  }
+</style>
+<script src="../assets/poketto.js" defer></script>
+<script src="../assets/related.js" defer></script></head>
+<body>
+<main class="pk-page">
+  <div class="pk-bar">
+    <a class="pk-home" href="../index.html" data-pk-wordmark title="回到 Poketto 首页"></a>
+    <div class="pk-label"><a href="../index.html" class="pk-zh">口袋工具箱</a> / Tuning &middot; <span class="pk-zh">音乐</span></div>
+  </div>
+
+  <header class="pk-head">
+    <div class="pk-kicker">
+      <span class="pk-label">Tool No.10</span>
+      <span class="pk-label">Ratio &middot; Cents &middot; Beats</span>
+    </div>
+    <h1 class="pk-title">音阶与<br>音律</h1>
+    <svg class="pk-star" viewBox="0 0 40 80" aria-hidden="true"><path d="M20 0 C21.2 26 22.5 33 40 38 C22.5 43 21.2 52 20 80 C18.8 52 17.5 43 0 38 C17.5 33 18.8 26 20 0Z"/></svg>
+    <div class="pk-br pk-lead">
+      <p class="pk-verse">两个音好不好听，看它们的频率成不成简单整数比。<br>点一个键，和中央 C 一起响，看两个波怎样对齐；<br>再换一种音律，听同一个音程怎样变得「准」或「不准」。</p>
+    </div>
+  </header>
+
+  <div class="bench">
+    <div class="views">
+      <section class="keys pk-br pk-veil" id="keys" role="group" aria-label="一个八度的 13 个音，点击后与中央 C 同时发声"></section>
+
+      <section class="frame wave pk-br pk-veil" aria-label="两个波和它们的和">
+        <canvas id="wave" role="img" aria-label="两个正弦波和它们叠加后的波形"></canvas>
+        <p class="badge pk-label" id="waveBadge">波形</p>
+      </section>
+      <p class="legend pk-note" id="waveNote"></p>
+
+      <section class="frame dev pk-br pk-veil" aria-label="各个音相对十二平均律的偏差">
+        <canvas id="dev" role="img" aria-label="各个音相对十二平均律的偏差，单位是音分"></canvas>
+        <p class="badge pk-label">和十二平均律差多少（音分）</p>
+      </section>
+    </div>
+
+    <div class="bench-ctrl">
+      <section class="panel pk-br pk-veil" aria-label="读数">
+        <div class="pk-h2"><small>Interval</small>现在的音程</div>
+        <div class="big" id="ivName">纯五度</div>
+        <p class="sub" id="freqText"></p>
+        <p class="lab" id="ratioText"></p>
+        <p class="lab" id="devText"></p>
+        <p class="lab" id="beatText"></p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="选音律">
+        <div class="pk-h2"><small>Tuning</small>用哪种音律</div>
+        <div class="row" id="tunings" role="group" aria-label="音律">
+          <button class="pk-chip zh" type="button" data-t="eq" aria-pressed="true">十二平均律</button>
+          <button class="pk-chip zh" type="button" data-t="just" aria-pressed="false">纯律</button>
+          <button class="pk-chip zh" type="button" data-t="pyth" aria-pressed="false">五度相生律</button>
+        </div>
+        <p class="lab" id="tuningNote"></p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="听一听">
+        <div class="pk-h2"><small>Listen</small>听一听</div>
+        <div class="row">
+          <button class="pk-chip zh" type="button" id="playScale">依次弹出音阶</button>
+          <button class="pk-chip zh" type="button" id="playAB">对比：平均律 → 当前音律</button>
+        </div>
+        <p class="lab" id="abNote"></p>
+        <div class="row" style="justify-content:space-between"><span class="lab">音量</span><span class="lab" id="volLab"></span></div>
+        <input class="pk-range" type="range" id="vol" min="0" max="1" step="0.05" value="0.5" aria-label="音量">
+        <p class="lab">声音在点击后才会出现。根音固定为中央 C（261.63 Hz）。</p>
+      </section>
+    </div>
+  </div>
+
+  <section class="notes">
+    <div class="pk-h2"><small>How to read</small>怎么读这张图</div>
+    <p class="pk-note"><b>音程就是频率的比。</b>上面的音和中央 C 的频率比是 2:1，就是高一个八度；是 3:2，就是纯五度；5:4 是大三度。比值越简单，两个波叠起来重复得越快，听起来越稳、越融合。</p>
+    <p class="pk-note"><b>波形图里的三条线。</b>上两条是两个单独的音，最下面是它们叠加的结果。比值是 3:2 时，叠加的波形每隔 2 个根音周期就完整重复一次。比值很复杂，或者根本没有简单比值，叠加的波形一直在变，看起来乱，听起来也更紧张。</p>
+    <p class="pk-note"><b>三种音律的区别。</b>纯律让三度、五度尽量贴近简单整数比（5:4、3:2），所以单个音程最「准」，缺点是换一个调就有些音不对。五度相生律只用 3:2 一个比值一路推出所有音，这就是中国的三分损益法：弦长乘 2/3（损）或 4/3（益），生出宫、商、角、徵、羽，它的大三度是 81:64，比纯律的 5:4 高约 22 分。十二平均律把八度均分成 12 份，每份 2 的 12 次方根，所有调都能用，代价是除了八度，几乎所有音程都只是接近简单比值。</p>
+    <p class="pk-note"><b>音分是什么。</b>一个八度是 1200 分，一个平均律半音是 100 分。听觉上，差 5 分左右多数人就听不出来了，差 15 分以上通常就能分辨。纯律的大三度比平均律低约 14 分，平均律的纯五度只低 2 分。</p>
+    <p class="pk-note"><b>拍音。</b>每个乐器的声音里都有泛音。如果两个音的某两个泛音频率差得很小，它们叠在一起就会一起一伏地「拍」。平均律的大三度，根音的第 5 泛音和上面音的第 4 泛音差约 10 赫兹，所以听起来有点「粗」。纯律的大三度这两个泛音完全对上，一点拍音也没有。</p>
+    <p class="pk-note"><b>五度相生为什么转不回来。</b>从一个音出发，连续往上叠 12 个纯五度，本来应该回到 7 个八度以上的同一个音，实际却高出了约 23.5 分（这叫毕达哥拉斯音差）。五度相生律把这点误差留在了某一个五度里。十二平均律则把它均摊到 12 个五度上，每个五度只低约 2 分。</p>
+  </section>
+
+  <section class="notes">
+    <div class="pk-h2"><small>The model</small>关于这个模型</div>
+    <p class="pk-note">频率比和音分是按定义算出来的：音分 = 1200 × log₂(频率比)。根音取中央 C = 261.63 Hz（A4 = 440 Hz 的十二平均律）。纯律用的是常见的 5 限纯律的一种排列；纯律有好几种变体，这里取其中一种，不同书里的 升 C、升 F、降 B 等音可能不同。五度相生律取从 C 起向上叠五度、再折回一个八度内的排列。</p>
+    <p class="pk-note">波形图画的是两个纯正弦波和它们的和，频率用的是真实频率，所以能看出对齐的周期。播放出来的声音带有前 6 个泛音，这样拍音才听得清，所以它的波形不是图里的纯正弦波。中国传统的律还有「十二律」的命名和不同的律学算法，页面没有展开，这里只用五度相生律说明三分损益的数学。</p>
+    <p class="pk-note">声音由浏览器生成，不同设备的音量和扬声器效果差别很大；在小扬声器上，低于 200 Hz 的成分基本听不到。对比播放用的是两个单独的音程，不是完整的和弦。</p>
+  </section>
+
+  <footer class="pk-foot">
+    <a class="pk-back pk-label" href="../index.html">
+      <svg viewBox="0 0 34 10" aria-hidden="true"><path d="M34 5 H2 M7 1 L2 5 L7 9" fill="none" stroke="#1d1e1b" stroke-width="1.4"/></svg>
+      回到口袋 <span class="zh">/ Back to the pocket</span>
+    </a>
+    <span class="pk-label">Poketto &middot; Made with curiosity</span>
+  </footer>
+</main>
+<script>
+(function () {
+  'use strict';
+  var ROOT = 261.6256;
+  var INK = '#1d1e1b', INK2 = '#4a4c45', SUN = '#e58a1f', LEAF = '#5fae5a', VERM = '#d4402a', LIME = '#b9e04c';
+  var BODY = '"Noto Sans SC", "PingFang SC", sans-serif', MONO = '"IBM Plex Mono", ui-monospace, Menlo, monospace';
+  var NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B', 'C'];
+  var NUM = ['1', '♯1', '2', '♯2', '3', '4', '♯4', '5', '♯5', '6', '♯6', '7', '1′'];
+  var BLACK = { 1: 1, 3: 1, 6: 1, 8: 1, 10: 1 };
+  var GONG = { 0: '宫', 2: '商', 4: '角', 7: '徵', 9: '羽', 12: '宫' };
+  var IV = ['同度', '小二度', '大二度', '小三度', '大三度', '纯四度', '三全音', '纯五度', '小六度', '大六度', '小七度', '大七度', '八度'];
+  var TUN = {
+    eq: { name: '十二平均律', col: INK,
+      note: '把八度均分成 12 份，每个半音的频率比都是 2 的 12 次方根。所有调通用，但除了八度，几乎所有音程都只是接近简单比值。',
+      ratio: function (k) { return Math.pow(2, k / 12); }, frac: null },
+    just: { name: '纯律', col: LEAF,
+      note: '让三度、五度贴近 5:4、3:2 这样的简单整数比，单个音程最「准」。缺点是换调之后有些音就不准了，所以它更适合固定调的人声和弦乐。',
+      fr: [[1, 1], [16, 15], [9, 8], [6, 5], [5, 4], [4, 3], [45, 32], [3, 2], [8, 5], [5, 3], [9, 5], [15, 8], [2, 1]] },
+    pyth: { name: '五度相生律', col: VERM,
+      note: '只用 3:2 这一个比值，一路往上叠五度、再折回八度，得到所有音。这就是中国的三分损益法：弦长乘 2/3 是「损」，乘 4/3 是「益」。',
+      fr: [[1, 1], [256, 243], [9, 8], [32, 27], [81, 64], [4, 3], [729, 512], [3, 2], [128, 81], [27, 16], [16, 9], [243, 128], [2, 1]] }
+  };
+  function ratioOf(t, k) { var T = TUN[t]; return T.fr ? T.fr[k][0] / T.fr[k][1] : T.ratio(k); }
+  function cents(r) { return 1200 * Math.log(r) / Math.LN2; }
+
+  function $(id) { return document.getElementById(id); }
+  var params = new URLSearchParams(location.search);
+  var state = {
+    tuning: TUN[params.get('tuning')] ? params.get('tuning') : 'eq',
+    note: params.has('note') ? Math.max(0, Math.min(12, parseInt(params.get('note'), 10) || 0)) : 7,
+    vol: 0.5
+  };
+  var cWave = $('wave'), cDev = $('dev');
+
+  // Simple whole-number ratio p:q for note k. Just and Pythagorean use their own exact fractions
+  // (null when the denominator is above 16). Equal temperament uses the nearest ratio with q <= 8 within 16 cents.
+  function simple(t, k) {
+    var T = TUN[t];
+    if (T.fr) {
+      var p0 = T.fr[k][0], q0 = T.fr[k][1];
+      return q0 <= 16 ? { p: p0, q: q0, err: 0 } : null;
+    }
+    var r = T.ratio(k);
+    for (var q = 1; q <= 8; q++) {
+      var p = Math.round(r * q);
+      if (p >= q && Math.abs(cents(r * q / p)) < 16) return { p: p, q: q, err: cents(r * q / p) };
+    }
+    return null;
+  }
+
+  // ---------- keys ----------
+  var keysEl = $('keys');
+  NAMES.forEach(function (n, k) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'key' + (BLACK[k] ? ' black' : ''); b.dataset.k = k;
+    b.setAttribute('aria-pressed', 'false');
+    b.setAttribute('aria-label', n + '，' + IV[k] + (GONG[k] ? '，' + GONG[k] : ''));
+    b.innerHTML = '<span class="gs"></span><span class="jp"></span><span class="nm"></span>';
+    b.querySelector('.gs').textContent = GONG[k] || '';
+    b.querySelector('.jp').textContent = NUM[k];
+    b.querySelector('.nm').textContent = n;
+    b.addEventListener('click', function () { state.note = k; update(); playDyad(k, state.tuning, 0); });
+    keysEl.appendChild(b);
+  });
+
+  // ---------- audio ----------
+  var ctx = null, master = null, wave = null;
+  function audio() {
+    if (!ctx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+      master = ctx.createGain(); master.gain.value = state.vol * state.vol * 0.5;
+      master.connect(ctx.destination);
+      var re = new Float32Array(8), im = new Float32Array(8);
+      for (var n = 1; n < 8; n++) im[n] = 1 / Math.pow(n, 1.35);
+      wave = ctx.createPeriodicWave(re, im);
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function voice(freq, when, dur, level) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.setPeriodicWave(wave); o.frequency.value = freq;
+    var t0 = ctx.currentTime + when;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(level, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  function playDyad(k, tuning, when) {
+    if (!audio()) return;
+    voice(ROOT, when, 1.9, 0.5);
+    if (k > 0) voice(ROOT * ratioOf(tuning, k), when, 1.9, 0.5);
+  }
+  function playScale() {
+    if (!audio()) return;
+    [0, 2, 4, 5, 7, 9, 11, 12].forEach(function (k, i) { voice(ROOT * ratioOf(state.tuning, k), i * 0.42, 0.9, 0.7); });
+  }
+  function playAB() {
+    if (!audio() || state.tuning === 'eq' || state.note === 0) return;
+    playDyad(state.note, 'eq', 0);
+    playDyad(state.note, state.tuning, 2.1);
+  }
+
+  // ---------- canvas helpers ----------
+  function fit(c) {
+    var r = c.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+    if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+    var x = c.getContext('2d');
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    x.clearRect(0, 0, w, h);
+    return { x: x, w: w, h: h };
+  }
+  function text(x, s, px, py, size, color, align, weight, font) {
+    x.font = (weight || 500) + ' ' + size + 'px ' + (font || BODY);
+    x.fillStyle = color; x.textAlign = align || 'left'; x.textBaseline = 'middle';
+    x.fillText(s, px, py);
+  }
+  function line(x, x1, y1, x2, y2, color, w, dash) {
+    x.save(); x.strokeStyle = color; x.lineWidth = w; if (dash) x.setLineDash(dash);
+    x.beginPath(); x.moveTo(x1, y1); x.lineTo(x2, y2); x.stroke(); x.restore();
+  }
+
+  // ---------- wave view ----------
+  function drawWave() {
+    var f = fit(cWave), x = f.x, W = f.w, H = f.h;
+    var k = state.note, f1 = ROOT, r = ratioOf(state.tuning, k), f2 = f1 * r;
+    var sm = simple(state.tuning, k);
+    var periods = sm ? (sm.q <= 12 ? sm.q : 8) : 8;
+    if (k === 0) periods = 3;
+    var T = periods / f1;
+    var L = 74, Rm = 14, top = 44, bandH = (H - top - 26) / 3, pw = W - L - Rm;
+    var bands = [
+      { y: top + bandH * 0.5, label: '中央 C', sub: ROOT.toFixed(1) + ' Hz', col: INK2, fn: function (t) { return Math.sin(TAU * f1 * t); }, amp: 0.4 },
+      { y: top + bandH * 1.5, label: NAMES[k], sub: f2.toFixed(1) + ' Hz', col: SUN, fn: function (t) { return Math.sin(TAU * f2 * t); }, amp: 0.4 },
+      { y: top + bandH * 2.5, label: '叠加', sub: '', col: INK, fn: function (t) { return (Math.sin(TAU * f1 * t) + (k ? Math.sin(TAU * f2 * t) : 0)) / 2; }, amp: 0.4, thick: true }
+    ];
+    var i, b;
+    // period marks of the root
+    for (i = 0; i <= periods; i++) {
+      var px = L + (i / periods) * pw;
+      line(x, px, top - 4, px, H - 24, 'rgba(29,30,27,.14)', 1, [2, 4]);
+      if (i < periods && (periods <= 12 || i % 2 === 0)) text(x, i + '', px, H - 12, 10.5, INK2, 'center', 500, MONO);
+    }
+    text(x, '根音周期 →', L + pw, H - 12, 10.5, INK2, 'right', 700);
+    bands.forEach(function (bd) {
+      line(x, L, bd.y, L + pw, bd.y, 'rgba(29,30,27,.3)', 1);
+      text(x, bd.label, 10, bd.y - 6, 12.5, bd.col === INK2 ? INK : bd.col, 'left', 700);
+      if (bd.sub) text(x, bd.sub, 10, bd.y + 9, 10.5, INK2, 'left', 500, MONO);
+      x.beginPath();
+      var N = 900;
+      for (i = 0; i <= N; i++) {
+        var t = i / N * T, v = bd.fn(t);
+        var xx = L + i / N * pw, yy = bd.y - v * bandH * 0.42;
+        i ? x.lineTo(xx, yy) : x.moveTo(xx, yy);
+      }
+      x.strokeStyle = bd.col; x.lineWidth = bd.thick ? 2.4 : 1.6; x.lineJoin = 'round'; x.stroke();
+    });
+    // mark that the sum repeats
+    if (k > 0 && sm && sm.q <= 12) {
+      var xe = L + pw;
+      x.fillStyle = LIME; x.strokeStyle = INK; x.lineWidth = 1.5;
+      x.beginPath(); x.arc(xe, bands[2].y, 5, 0, 7); x.fill(); x.stroke();
+    }
+    $('waveBadge').textContent = (k === 0 ? '同度：同一个音' : NAMES[0] + ' 和 ' + NAMES[k] + ' · ' + IV[k]);
+    var tx;
+    if (k === 0) tx = '这是两个完全相同的音，叠加后就是同一个波，只是更响。点其他键看两个波怎么叠。';
+    else if (sm && sm.q <= 12) {
+      tx = '频率比' + (state.tuning === 'eq' ? '接近' : '是') + ' ' + sm.p + ':' + sm.q + '。';
+      tx += sm.q === 1 ? '上面的音每个周期都和根音对齐。' : '每过 ' + sm.q + ' 个根音周期，两个波回到同一个相位，叠加的波形就完整重复一次（绿点处）。';
+      if (state.tuning === 'eq' && Math.abs(sm.err) > 0.05) tx += '平均律不是严格的 ' + sm.p + ':' + sm.q + '，差 ' + Math.abs(sm.err).toFixed(1) + ' 分，叠加的波形每次重复时会错开一点点。';
+    } else if (sm) tx = '频率比接近 ' + sm.p + ':' + sm.q + '，要过 ' + sm.q + ' 个根音周期才对齐，图里只画了 8 个。';
+    else tx = '这个音程没有简单的整数比（' + ratioText(state.tuning, k) + '），叠加的波形很久才重复，图里看不出规律，听起来也更紧张。';
+    $('waveNote').textContent = tx;
+    cWave.setAttribute('aria-label', '两个正弦波和它们叠加后的波形。' + $('waveBadge').textContent + '。' + tx);
+  }
+  var TAU = Math.PI * 2;
+
+  // ---------- deviation view ----------
+  function drawDev() {
+    var f = fit(cDev), x = f.x, W = f.w, H = f.h;
+    var L = 42, Rm = 14, T = 66, B = 28, pw = W - L - Rm, ph = H - T - B, RANGE = 24;
+    function Y(c) { return T + ph / 2 - c / RANGE * ph / 2; }
+    var slot = pw / 13, k;
+    [-20, -10, 0, 10, 20].forEach(function (c) {
+      line(x, L, Y(c), L + pw, Y(c), c === 0 ? INK : 'rgba(29,30,27,.14)', c === 0 ? 1.4 : 1);
+      text(x, (c > 0 ? '+' : c < 0 ? '−' : '') + Math.abs(c), L - 8, Y(c), 10.5, INK2, 'right', 500, MONO);
+    });
+    var cur = state.tuning;
+    for (k = 0; k < 13; k++) {
+      var cx = L + slot * (k + 0.5);
+      if (k === state.note) { x.fillStyle = 'rgba(185,224,76,.4)'; x.fillRect(cx - slot / 2, T - 8, slot, ph + 16); }
+      // other tunings as small dots
+      ['eq', 'just', 'pyth'].forEach(function (t) {
+        var dv = cents(ratioOf(t, k)) - 100 * k;
+        if (t === cur) return;
+        x.fillStyle = TUN[t].col; x.globalAlpha = 0.45;
+        x.beginPath(); x.arc(cx + (t === 'just' ? -5 : 5), Y(dv), 3.2, 0, 7); x.fill(); x.globalAlpha = 1;
+      });
+      var d = cents(ratioOf(cur, k)) - 100 * k;
+      var h = Math.abs(Y(d) - Y(0));
+      x.fillStyle = TUN[cur].col === INK ? 'rgba(29,30,27,.55)' : TUN[cur].col; x.globalAlpha = 0.85;
+      if (h > 0.5) x.fillRect(cx - Math.min(11, slot * 0.28), Math.min(Y(d), Y(0)), Math.min(22, slot * 0.56), h);
+      x.globalAlpha = 1;
+      text(x, NAMES[k], cx, H - 14, 10.5, k === state.note ? INK : INK2, 'center', k === state.note ? 800 : 500, '"Archivo", sans-serif');
+    }
+    // legend: own line below the badge
+    var lx = 14, short = { eq: '平均律', just: '纯律', pyth: '五度相生' };
+    x.font = '500 11px ' + BODY;
+    ['eq', 'just', 'pyth'].forEach(function (t) {
+      var label = short[t] + (t === cur ? '（柱）' : '（点）');
+      x.fillStyle = TUN[t].col; x.globalAlpha = t === cur ? 0.9 : 0.55;
+      x.beginPath(); x.arc(lx + 4, 46, 4, 0, 7); x.fill(); x.globalAlpha = 1;
+      text(x, label, lx + 13, 46, 11, INK, 'left', t === cur ? 700 : 500);
+      lx += 13 + x.measureText(label).width + 12;
+    });
+    cDev.setAttribute('aria-label', '各个音相对十二平均律的偏差，单位是音分。当前音律：' + TUN[cur].name + '。');
+  }
+
+  // ---------- readouts ----------
+  function ratioText(t, k) {
+    var T = TUN[t];
+    if (k === 0) return '1:1';
+    return T.fr ? T.fr[k][0] + ':' + T.fr[k][1] : '2^(' + k + '/12) ≈ ' + T.ratio(k).toFixed(4);
+  }
+  function update() {
+    var k = state.note, t = state.tuning, r = ratioOf(t, k), f2 = ROOT * r, c = cents(r), de = c - 100 * k;
+    $('ivName').textContent = k === 0 ? '同度 · C' : IV[k] + ' · ' + NAMES[k];
+    $('freqText').textContent = f2.toFixed(2) + ' Hz  （根音 ' + ROOT.toFixed(2) + ' Hz）';
+    $('ratioText').innerHTML = '';
+    var s1 = document.createElement('span');
+    s1.innerHTML = '频率比 <strong></strong>，' + c.toFixed(1) + ' 分。';
+    s1.querySelector('strong').textContent = ratioText(t, k);
+    $('ratioText').appendChild(s1);
+    $('devText').textContent = t === 'eq' ? '平均律就是这条标准，偏差为 0。' : '比十二平均律' + (Math.abs(de) < 0.05 ? '一致。' : (de > 0 ? '高 ' : '低 ') + Math.abs(de).toFixed(1) + ' 分。');
+    var sm = simple(t, k), beat;
+    if (k === 0 || k === 12) beat = '八度和同度：每个泛音都对得上，没有拍音。';
+    else if (sm) {
+      var bf = Math.abs(sm.q * f2 - sm.p * ROOT);
+      beat = bf < 0.05 ? '根音的第 ' + sm.p + ' 泛音和上面音的第 ' + sm.q + ' 泛音完全对上，没有拍音。'
+        : '根音的第 ' + sm.p + ' 泛音和上面音的第 ' + sm.q + ' 泛音差 ' + bf.toFixed(2) + ' Hz，每秒约拍 ' + bf.toFixed(1) + ' 次。' + (bf >= 4 ? '听起来有点「粗」。' : bf >= 0.5 ? '听起来有轻微的「摇」。' : '拍得很慢，几乎听不出来。');
+    } else beat = '没有简单的整数比，泛音很难对上，拍音杂乱，听起来更紧张。';
+    $('beatText').textContent = beat;
+    $('tuningNote').textContent = TUN[t].note;
+    $('abNote').textContent = (t === 'eq' || k === 0) ? '选一个非平均律的音律，并点一个音，才能对比。' : '先响平均律的「' + IV[k] + '」，停一下，再响' + TUN[t].name + '的。';
+    $('playAB').disabled = (t === 'eq' || k === 0);
+    $('playAB').style.opacity = $('playAB').disabled ? '.45' : '';
+    $('playAB').style.cursor = $('playAB').disabled ? 'default' : '';
+    document.querySelectorAll('#keys .key').forEach(function (b) { b.setAttribute('aria-pressed', String(parseInt(b.dataset.k, 10) === k)); });
+    document.querySelectorAll('#tunings .pk-chip').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === t)); });
+    $('volLab').textContent = Math.round(state.vol * 100) + '%';
+    schedule();
+  }
+  var raf = 0;
+  function render() { raf = 0; drawWave(); drawDev(); }
+  function schedule() { if (!raf) raf = requestAnimationFrame(render); }
+
+  document.querySelectorAll('#tunings .pk-chip').forEach(function (b) {
+    b.addEventListener('click', function () { state.tuning = b.dataset.t; update(); playDyad(state.note, state.tuning, 0); });
+  });
+  $('playScale').addEventListener('click', playScale);
+  $('playAB').addEventListener('click', playAB);
+  $('vol').addEventListener('input', function () {
+    state.vol = parseFloat(this.value);
+    if (master) master.gain.value = state.vol * state.vol * 0.5;
+    $('volLab').textContent = Math.round(state.vol * 100) + '%';
+  });
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(schedule);
+    ro.observe(cWave.parentNode); ro.observe(cDev.parentNode);
+  } else window.addEventListener('resize', schedule);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+  update();
+})();
+</script>
+</body>
+</html>
