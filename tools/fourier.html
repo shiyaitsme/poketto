@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>傅里叶级数 · Poketto</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/poketto.css">
+<style>
+  .pk-page { max-width: 1120px; }
+  .bench { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, .85fr); gap: 22px; align-items: start; }
+  .views { display: grid; gap: 16px; min-width: 0; }
+  .frame { position: relative; padding: 0; overflow: hidden; --l: 16px; }
+  .frame.main { height: clamp(300px, 46vh, 420px); }
+  .frame.spec { height: 190px; }
+  .frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .badge { position: absolute; z-index: 5; top: 12px; left: 12px; margin: 0; pointer-events: none; padding: 1px 7px; background: var(--veil); }
+  .legend { margin: 0; max-width: 70ch; }
+  .bench-ctrl { display: grid; gap: 16px; min-width: 0; }
+  .panel { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
+  .big { font-weight: 900; font-size: clamp(24px, 3.2vw, 34px); line-height: 1.25; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .lab { font-size: 13px; color: var(--ink-2); margin: 0; }
+  .lab strong { color: var(--ink); font-weight: 700; }
+  .ends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+  .formula { font-family: var(--mono); font-size: 12.5px; color: var(--ink); margin: 0; overflow-wrap: anywhere; }
+  .notes { display: grid; gap: 12px; max-width: 720px; }
+  @media (max-width: 860px) {
+    .bench { grid-template-columns: minmax(0, 1fr); }
+    .frame.main { height: 320px; }
+  }
+</style>
+<script src="../assets/poketto.js" defer></script>
+<script src="../assets/related.js" defer></script></head>
+<body>
+<main class="pk-page">
+  <div class="pk-bar">
+    <a class="pk-home" href="../index.html" data-pk-wordmark title="回到 Poketto 首页"></a>
+    <div class="pk-label"><a href="../index.html" class="pk-zh">口袋工具箱</a> / Fourier &middot; <span class="pk-zh">数学</span></div>
+  </div>
+
+  <header class="pk-head">
+    <div class="pk-kicker">
+      <span class="pk-label">Tool No.09</span>
+      <span class="pk-label">Circles &middot; Waves &middot; Sum</span>
+    </div>
+    <h1 class="pk-title">用转圈<br>画出方波</h1>
+    <svg class="pk-star" viewBox="0 0 40 80" aria-hidden="true"><path d="M20 0 C21.2 26 22.5 33 40 38 C22.5 43 21.2 52 20 80 C18.8 52 17.5 43 0 38 C17.5 33 18.8 26 20 0Z"/></svg>
+    <div class="pk-br pk-lead">
+      <p class="pk-verse">方方正正的波，是一串圆转出来的。<br>每个圆比前一个转得快、画得小，<br>把它们首尾接起来，笔尖的高度就是波形。加到多少个，它才像？</p>
+    </div>
+  </header>
+
+  <div class="bench">
+    <div class="views">
+      <section class="frame main pk-br pk-veil" aria-label="转动的圆和波形">
+        <canvas id="main" role="img" aria-label="首尾相连的转动的圆，笔尖的高度向右展开成波形"></canvas>
+        <p class="badge pk-label" id="badge">圆 → 波</p>
+      </section>
+      <p class="legend pk-note">左边是首尾相连的圆：大圆转得最慢，每往后一个圆，转得更快、半径更小。最后一个圆的笔尖，高度向右一路画成波形。虚线是想要的目标波形。</p>
+      <section class="frame spec pk-br pk-veil" aria-label="每个圆的大小">
+        <canvas id="spec" role="img" aria-label="每个圆的半径的柱状图"></canvas>
+        <p class="badge pk-label">每个圆的半径（越高越大）</p>
+      </section>
+    </div>
+
+    <div class="bench-ctrl">
+      <section class="panel pk-br pk-veil" aria-label="读数">
+        <div class="pk-h2"><small>Now</small>现在的波</div>
+        <div class="big" id="kindName">方波</div>
+        <p class="formula" id="formula"></p>
+        <p class="lab" id="countText"></p>
+        <p class="lab" id="errText"></p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="选波形">
+        <div class="pk-h2"><small>Target</small>想画出的波</div>
+        <div class="row" id="kinds" role="group" aria-label="波形">
+          <button class="pk-chip zh" type="button" data-kind="square" aria-pressed="true">方波</button>
+          <button class="pk-chip zh" type="button" data-kind="saw" aria-pressed="false">锯齿波</button>
+          <button class="pk-chip zh" type="button" data-kind="tri" aria-pressed="false">三角波</button>
+        </div>
+        <p class="lab" id="kindNote"></p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="圆的个数">
+        <div class="row" style="justify-content:space-between">
+          <div class="pk-h2"><small>Circles</small>用几个圆</div>
+          <span class="lab" id="nLab"></span>
+        </div>
+        <input class="pk-range" type="range" id="count" min="1" max="30" step="1" value="3" aria-label="圆的个数">
+        <div class="ends"><span>1 个</span><span>30 个</span></div>
+        <div class="row" id="nChips" role="group" aria-label="常用个数">
+          <button class="pk-chip" type="button" data-n="1">1</button>
+          <button class="pk-chip" type="button" data-n="3">3</button>
+          <button class="pk-chip" type="button" data-n="5">5</button>
+          <button class="pk-chip" type="button" data-n="10">10</button>
+          <button class="pk-chip" type="button" data-n="30">30</button>
+        </div>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="播放">
+        <div class="pk-h2"><small>Play</small>转动</div>
+        <div class="row">
+          <button class="pk-chip zh" type="button" id="play" aria-pressed="true">暂停</button>
+        </div>
+        <div class="row" style="justify-content:space-between"><span class="lab">速度</span><span class="lab" id="spLab"></span></div>
+        <input class="pk-range" type="range" id="speed" min="0.1" max="2" step="0.05" value="1" aria-label="转动速度">
+        <div class="row">
+          <label class="pk-check"><input type="checkbox" id="showCircles" checked>画出圆和半径</label>
+          <label class="pk-check"><input type="checkbox" id="showIdeal" checked>画出目标波形（虚线）</label>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="notes">
+    <div class="pk-h2"><small>How to read</small>怎么读这张图</div>
+    <p class="pk-note"><b>每个圆是一个正弦波。</b>点在圆上匀速转，它的高度随时间变化，画出来就是正弦波。圆越大，波越高；转得越快，波越密。把一串圆首尾相接，笔尖的高度，就是把这些正弦波加在一起。</p>
+    <p class="pk-note"><b>一个圆只能画出光滑的波。</b>只用 1 个圆，方波看起来就是一条正弦曲线。加到 3 个、5 个，平顶越来越平，竖边越来越陡。加到 30 个，已经很像方波了，可是永远不会真的变成它。</p>
+    <p class="pk-note"><b>竖边附近总是冲过头。</b>方波和锯齿波在跳变处，圆加得足够多以后，波形都会冲过目标大约 9% 的跳变幅度，只是冲过的那一小段越来越窄。这叫吉布斯现象。三角波没有跳变，所以没有这种冲过头，只用很少几个圆就很准了。</p>
+    <p class="pk-note"><b>为什么方波只用奇数个频率。</b>方波的上半个周期和下半个周期互为镜像，偶数倍的频率会被抵消，只剩 1、3、5……倍。三角波也一样。锯齿波用上全部整数倍频率。</p>
+    <p class="pk-note"><b>频谱就是圆的大小表。</b>下面的柱状图把每个圆的半径列出来：方波的圆按 1/n 变小，三角波按 1/n² 变小，所以三角波收敛得更快。这是傅里叶分析的基本想法：一个周期的波，可以拆成一系列整数倍频率的正弦波。</p>
+  </section>
+
+  <section class="notes">
+    <div class="pk-h2"><small>The model</small>关于这个模型</div>
+    <p class="pk-note">这里画的是三种波的傅里叶级数的前几项：方波 (4/π)·Σ sin(nt)/n（n 取奇数），锯齿波 (2/π)·Σ (−1)<sup>n+1</sup> sin(nt)/n，三角波 (8/π²)·Σ (−1)<sup>k</sup> sin((2k+1)t)/(2k+1)²。三种波的幅度都归一到 ±1。</p>
+    <p class="pk-note">转动的时间是示意的，转一圈约 10 秒除以速度，不对应任何真实的频率。读数里的「冲过头」和「最大偏差」是在一个周期上取 2000 个点算出来的，不是理论值：方波和锯齿波在项数很多时趋近于跳变幅度的 8.9%（方波从上面降下来，锯齿波从下面升上去）。</p>
+    <p class="pk-note">这里的三种波都是奇对称的，所以只用到正弦项。一般的周期函数还会有余弦项，页面没有画；也没有画复数形式的傅里叶级数。</p>
+  </section>
+
+  <footer class="pk-foot">
+    <a class="pk-back pk-label" href="../index.html">
+      <svg viewBox="0 0 34 10" aria-hidden="true"><path d="M34 5 H2 M7 1 L2 5 L7 9" fill="none" stroke="#1d1e1b" stroke-width="1.4"/></svg>
+      回到口袋 <span class="zh">/ Back to the pocket</span>
+    </a>
+    <span class="pk-label">Poketto &middot; Made with curiosity</span>
+  </footer>
+</main>
+<script>
+(function () {
+  'use strict';
+  var PI = Math.PI, TAU = 2 * Math.PI;
+  var INK = '#1d1e1b', INK2 = '#4a4c45', SUN = '#e58a1f', LEAF = '#5fae5a', VERM = '#d4402a';
+  var BODY = '"Noto Sans SC", "PingFang SC", sans-serif', MONO = '"IBM Plex Mono", ui-monospace, Menlo, monospace';
+  var KINDS = {
+    square: { name: '方波', note: '只有 1、3、5……倍频率的圆；圆的半径按 1/n 变小。',
+      formula: 'y = (4/π)·[sin t + sin3t/3 + sin5t/5 + …]',
+      ideal: function (t) { return Math.sin(t) >= 0 ? 1 : -1; },
+      term: function (k) { var n = 2 * k + 1; return { n: n, a: 4 / (PI * n) }; } },
+    saw: { name: '锯齿波', note: '1、2、3……所有整数倍频率都要；半径按 1/n 变小，相邻的圆朝相反方向。',
+      formula: 'y = (2/π)·[sin t − sin2t/2 + sin3t/3 − …]',
+      ideal: function (t) { var u = ((t + PI) % TAU + TAU) % TAU; return u / PI - 1; },
+      term: function (k) { var n = k + 1; return { n: n, a: (2 / PI) * (k % 2 ? -1 : 1) / n }; } },
+    tri: { name: '三角波', note: '也只有奇数倍频率，但半径按 1/n² 变小，所以很快就逼近。',
+      formula: 'y = (8/π²)·[sin t − sin3t/9 + sin5t/25 − …]',
+      ideal: function (t) { return (2 / PI) * Math.asin(Math.sin(t)); },
+      term: function (k) { var n = 2 * k + 1; return { n: n, a: (8 / (PI * PI)) * (k % 2 ? -1 : 1) / (n * n) }; } }
+  };
+  var MAXN = 30;
+
+  function $(id) { return document.getElementById(id); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  var params = new URLSearchParams(location.search);
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var frozen = params.has('t');
+  var state = {
+    kind: KINDS[params.get('kind')] ? params.get('kind') : 'square',
+    n: params.has('n') ? clamp(parseInt(params.get('n'), 10) || 3, 1, MAXN) : 3,
+    t: frozen ? parseFloat(params.get('t')) || 0 : 0,
+    speed: 1,
+    playing: !reduce && !frozen,
+    circles: true, ideal: true
+  };
+  var cMain = $('main'), cSpec = $('spec');
+
+  function terms() {
+    var out = [], K = KINDS[state.kind];
+    for (var k = 0; k < state.n; k++) out.push(K.term(k));
+    return out;
+  }
+  function sumAt(ts, t) {
+    var s = 0;
+    for (var i = 0; i < ts.length; i++) s += ts[i].a * Math.sin(ts[i].n * t);
+    return s;
+  }
+
+  // ---------- canvas helpers ----------
+  function fit(c) {
+    var r = c.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+    if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+    var x = c.getContext('2d');
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    x.clearRect(0, 0, w, h);
+    return { x: x, w: w, h: h };
+  }
+  function text(x, s, px, py, size, color, align, weight, font) {
+    x.font = (weight || 500) + ' ' + size + 'px ' + (font || BODY);
+    x.fillStyle = color; x.textAlign = align || 'left'; x.textBaseline = 'middle';
+    x.fillText(s, px, py);
+  }
+  function line(x, x1, y1, x2, y2, color, w, dash) {
+    x.save(); x.strokeStyle = color; x.lineWidth = w; if (dash) x.setLineDash(dash);
+    x.beginPath(); x.moveTo(x1, y1); x.lineTo(x2, y2); x.stroke(); x.restore();
+  }
+
+  // ---------- main picture ----------
+  function drawMain() {
+    var f = fit(cMain), x = f.x, W = f.w, H = f.h;
+    var ts = terms(), K = KINDS[state.kind];
+    var S = Math.min(H * 0.25, W * 0.105);
+    var cy = H * 0.54;
+    var cx = 14 + Math.abs(ts[0].a) * S + 4;
+    var wx0 = Math.max(cx + 2.3 * S, W * 0.46), ww = W - wx0 - 14;
+    var span = 2 * TAU;            // two periods across the wave panel
+    function WX(s) { return wx0 + s / span * ww; }
+
+    // guides: zero line and +-1
+    line(x, wx0, cy, W - 10, cy, 'rgba(29,30,27,.35)', 1);
+    [1, -1].forEach(function (v) {
+      line(x, wx0, cy - v * S, W - 10, cy - v * S, 'rgba(29,30,27,.16)', 1, [3, 5]);
+      text(x, v > 0 ? '+1' : '−1', wx0 - 12, cy - v * S, 10.5, INK2, 'right', 500, MONO);
+    });
+
+    // ideal waveform
+    if (state.ideal) {
+      x.save(); x.beginPath(); x.rect(wx0, 0, ww + 14, H); x.clip();
+      x.beginPath();
+      var first = true, prev = null;
+      for (var i = 0; i <= 600; i++) {
+        var s = i / 600 * span, v = K.ideal(state.t - s);
+        var px = WX(s), py = cy - v * S;
+        if (prev !== null && Math.abs(v - prev) > 1.2) { first = true; }   // do not join across a jump
+        first ? x.moveTo(px, py) : x.lineTo(px, py); first = false; prev = v;
+      }
+      x.strokeStyle = 'rgba(29,30,27,.5)'; x.lineWidth = 1.4; x.setLineDash([5, 4]); x.stroke();
+      x.restore();
+    }
+
+    // the circles
+    var px0 = cx, py0 = cy, i2;
+    if (state.circles) {
+      for (i2 = 0; i2 < ts.length; i2++) {
+        var r = Math.abs(ts[i2].a) * S, phi = ts[i2].n * state.t + (ts[i2].a < 0 ? PI : 0);
+        var nx = px0 + r * Math.cos(phi), ny = py0 - r * Math.sin(phi);
+        var big = r > 1.5;
+        if (big) {
+          x.beginPath(); x.arc(px0, py0, r, 0, 7);
+          x.strokeStyle = i2 === 0 ? 'rgba(29,30,27,.55)' : 'rgba(29,30,27,.28)'; x.lineWidth = 1; x.stroke();
+          line(x, px0, py0, nx, ny, i2 === 0 ? INK : INK2, i2 === 0 ? 1.8 : 1.2);
+        }
+        px0 = nx; py0 = ny;
+      }
+    } else {
+      py0 = cy - sumAt(ts, state.t) * S; px0 = cx;
+    }
+    var tipY = cy - sumAt(ts, state.t) * S;
+    // connector from tip to the wave
+    line(x, px0, tipY, wx0, tipY, SUN, 1.2, [3, 3]);
+
+    // the wave from the circles
+    x.save(); x.beginPath(); x.rect(wx0 - 1, 0, ww + 15, H); x.clip();
+    x.beginPath();
+    for (var j = 0; j <= 700; j++) {
+      var sj = j / 700 * span, yj = cy - sumAt(ts, state.t - sj) * S, xj = WX(sj);
+      j ? x.lineTo(xj, yj) : x.moveTo(xj, yj);
+    }
+    x.strokeStyle = INK; x.lineWidth = 2.4; x.lineJoin = 'round'; x.stroke();
+    x.restore();
+
+    // tip dot and its centre mark
+    x.fillStyle = SUN; x.strokeStyle = INK; x.lineWidth = 1.5;
+    x.beginPath(); x.arc(px0, tipY, 5, 0, 7); x.fill(); x.stroke();
+    x.fillStyle = INK; x.beginPath(); x.arc(cx, cy, 2.5, 0, 7); x.fill();
+    text(x, '时间 →', W - 12, H - 12, 11, INK2, 'right', 700);
+  }
+
+  // ---------- spectrum ----------
+  function drawSpec() {
+    var f = fit(cSpec), x = f.x, W = f.w, H = f.h, K = KINDS[state.kind];
+    var L = 14, Rm = 14, T = 40, B = 22, pw = W - L - Rm, ph = H - T - B;
+    var all = [], maxA = 0, k;
+    for (k = 0; k < MAXN; k++) { var tm = K.term(k); all.push(tm); }
+    for (k = 0; k < MAXN; k++) maxA = Math.max(maxA, Math.abs(all[k].a));
+    var slot = pw / MAXN, bw = Math.max(2, Math.min(18, slot * 0.62));
+    line(x, L, T + ph, L + pw, T + ph, INK, 1.2);
+    for (k = 0; k < MAXN; k++) {
+      var a = Math.abs(all[k].a), h = a / maxA * ph, cx = L + slot * (k + 0.5), on = k < state.n;
+      x.fillStyle = on ? 'rgba(185,224,76,.85)' : 'rgba(29,30,27,.12)';
+      x.fillRect(cx - bw / 2, T + ph - h, bw, h);
+      x.strokeStyle = on ? INK : 'rgba(29,30,27,.3)'; x.lineWidth = 1;
+      x.strokeRect(cx - bw / 2 + .5, T + ph - h + .5, bw - 1, h - 1);
+    }
+    // frequency labels for a handful of bars
+    var every = slot < 14 ? 5 : 2;
+    for (k = 0; k < MAXN; k++) {
+      if (k === 0 || (k + 1) % every === 0 || k === state.n - 1) {
+        text(x, 'n=' + all[k].n, L + slot * (k + 0.5), T + ph + 12, 10, k < state.n ? INK : INK2, 'center', k === state.n - 1 ? 700 : 500, MONO);
+      }
+    }
+  }
+
+  // ---------- readouts ----------
+  function metrics() {
+    var ts = terms(), K = KINDS[state.kind], N = 2000, mx = -9, mn = 9, err = 0;
+    for (var i = 0; i < N; i++) {
+      var t = (i + 0.5) / N * TAU, v = sumAt(ts, t), id = K.ideal(t);
+      if (v > mx) mx = v; if (v < mn) mn = v;
+      // skip points next to a jump when measuring the plain difference
+      err = Math.max(err, Math.abs(v - id) * (state.kind === 'tri' ? 1 : 0));
+    }
+    return { max: mx, min: mn, err: err };
+  }
+  function updateText() {
+    var K = KINDS[state.kind], ts = terms(), m = metrics();
+    $('kindName').textContent = K.name;
+    $('formula').textContent = K.formula;
+    $('kindNote').textContent = K.note;
+    var topN = ts[ts.length - 1].n;
+    $('countText').textContent = '现在用了 ' + state.n + ' 个圆，最快的一个转得是最慢的 ' + topN + ' 倍。';
+    var over;
+    if (state.kind === 'tri') {
+      over = '离目标最大差 ' + (m.err * 100).toFixed(1) + '%（目标高度是 1）。三角波没有竖边，不冲过头。';
+    } else if (state.n === 1) {
+      over = '只有一个圆时，还看不出竖边附近的冲过头。';
+    } else {
+      var o = m.max - 1;
+      over = o <= 0
+        ? '最高只到 ' + m.max.toFixed(2) + '，还没冲过目标 1。再多加几个圆试试。'
+        : '竖边附近冲过目标 ' + (o * 100).toFixed(1) + '%，相当于跳变幅度（2）的 ' + (o / 2 * 100).toFixed(1) + '%。圆再多，这个数也会停在约 9% 附近，不会消失。';
+    }
+    $('errText').textContent = over;
+    $('nLab').textContent = state.n + ' 个圆';
+    $('spLab').textContent = state.speed.toFixed(2) + '×';
+    $('badge').textContent = K.name + ' · ' + state.n + ' 个圆';
+    cMain.setAttribute('aria-label', K.name + '：用 ' + state.n + ' 个首尾相连的转动的圆，笔尖的高度向右展开成波形。');
+    cSpec.setAttribute('aria-label', '每个圆的半径的柱状图，前 ' + state.n + ' 个被点亮。');
+    document.querySelectorAll('#kinds .pk-chip').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.kind === state.kind)); });
+    document.querySelectorAll('#nChips .pk-chip').forEach(function (b) { b.setAttribute('aria-pressed', String(parseInt(b.dataset.n, 10) === state.n)); });
+    $('play').setAttribute('aria-pressed', String(state.playing));
+    $('play').textContent = state.playing ? '暂停' : '播放';
+  }
+
+  var raf = 0, last = 0;
+  function render() { raf = 0; drawMain(); drawSpec(); }
+  function schedule() { if (!raf) raf = requestAnimationFrame(render); }
+  function frame(now) {
+    if (!state.playing) return;
+    var dt = Math.min(0.1, (now - last) / 1000); last = now;
+    state.t = (state.t + dt * state.speed * TAU / 10) % (TAU * 1000);
+    drawMain();
+    requestAnimationFrame(frame);
+  }
+  function setPlaying(p) {
+    state.playing = p; updateText();
+    if (p) { last = performance.now(); requestAnimationFrame(frame); }
+  }
+
+  // ---------- events ----------
+  $('count').value = String(state.n);
+  $('count').addEventListener('input', function () { state.n = parseInt(this.value, 10); updateText(); schedule(); });
+  $('speed').addEventListener('input', function () { state.speed = parseFloat(this.value); updateText(); });
+  document.querySelectorAll('#kinds .pk-chip').forEach(function (b) {
+    b.addEventListener('click', function () { state.kind = b.dataset.kind; updateText(); schedule(); });
+  });
+  document.querySelectorAll('#nChips .pk-chip').forEach(function (b) {
+    b.addEventListener('click', function () { state.n = parseInt(b.dataset.n, 10); $('count').value = String(state.n); updateText(); schedule(); });
+  });
+  $('play').addEventListener('click', function () { setPlaying(!state.playing); });
+  $('showCircles').addEventListener('change', function () { state.circles = this.checked; schedule(); });
+  $('showIdeal').addEventListener('change', function () { state.ideal = this.checked; schedule(); });
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(schedule);
+    ro.observe(cMain.parentNode); ro.observe(cSpec.parentNode);
+  } else window.addEventListener('resize', schedule);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule);
+
+  updateText();
+  schedule();
+  if (state.playing) { last = performance.now(); requestAnimationFrame(frame); }
+})();
+</script>
+</body>
+</html>

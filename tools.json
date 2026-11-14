@@ -77,5 +77,11 @@
       "tools/solar-system.html",
       "tools/moon-phases.html"
     ]
+  },
+  {
+    "title": "用转圈画出方波",
+    "subject": "数学",
+    "description": "一串越转越快的圆，笔尖的高度叠成波形：选方波、锯齿波或三角波，调圆的个数，看波怎样逼近目标，以及竖边附近总会冲过头的吉布斯现象。",
+    "url": "tools/fourier.html"
   }
 ]
