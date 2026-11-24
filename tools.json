@@ -7,7 +7,8 @@
     "related": [
       "tools/solar-system.html",
       "tools/moon-phases.html",
-      "tools/seasons.html"
+      "tools/seasons.html",
+      "tools/enso.html"
     ]
   },
   {
@@ -75,7 +76,8 @@
     "related": [
       "tools/earth-directions.html",
       "tools/solar-system.html",
-      "tools/moon-phases.html"
+      "tools/moon-phases.html",
+      "tools/enso.html"
     ]
   },
   {
@@ -94,6 +96,16 @@
     "url": "tools/scales.html",
     "related": [
       "tools/fourier.html"
+    ]
+  },
+  {
+    "title": "沃克环流与厄尔尼诺",
+    "subject": "地理",
+    "description": "一块可以转着看的 3D 赤道太平洋：拖动海温指数，看信风、暖水、温跃层和雨带怎样一起从拉尼娜走到厄尔尼诺；放一遍三年的循环看反馈怎样放大，再看世界各地会偏湿还是偏干。",
+    "url": "tools/enso.html",
+    "related": [
+      "tools/seasons.html",
+      "tools/earth-directions.html"
     ]
   }
 ]
