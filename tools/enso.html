@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>沃克环流与厄尔尼诺 · Poketto</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/poketto.css">
+<style>
+  /* tool-specific layout; look comes from poketto.css */
+  .pk-page { max-width: 1120px; }
+  .stage { position: relative; padding: 0; overflow: hidden; touch-action: none; --l: 18px; height: clamp(280px, 40vh, 430px); }
+  .stage canvas { position: relative; z-index: 1; display: block; }
+  .badge { position: absolute; z-index: 2; top: 14px; left: 18px; pointer-events: none; padding: 1px 7px; background: var(--veil); }
+  .badge small { margin-left: 8px; font-family: var(--body); font-weight: 500; letter-spacing: .04em; color: var(--ink-2); text-transform: none; }
+  .hint { position: absolute; z-index: 2; bottom: 12px; right: 18px; pointer-events: none; color: var(--ink-2); }
+  .schematic { position: absolute; z-index: 2; bottom: 12px; left: 18px; pointer-events: none; color: var(--ink-2); }
+  .nogl[hidden] { display: none; }
+  .nogl { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--ink-2); }
+  .bench { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  .bench-ctrl { display: grid; gap: 16px; min-width: 0; }
+  .bench-view { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--paper); padding: 8px 0 6px; }
+  .bench-view .stage { background-color: var(--paper); }
+  .legend { margin: 10px 0 0; font-size: 13px; }
+  .scale { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--ink-2); margin-top: 8px; }
+  .scale i { flex: 1; height: 8px; border: 1px solid var(--ink); }
+  .panel { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
+  .big { font-weight: 900; font-size: clamp(28px, 3.6vw, 40px); line-height: 1.15; }
+  .big small { font-family: var(--mono); font-weight: 500; font-size: 15px; margin-left: 10px; color: var(--ink-2); }
+  .rows { display: grid; gap: 3px; }
+  .r { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; }
+  .r b { font-weight: 400; color: var(--ink-2); }
+  .r i { font-style: normal; font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .row.between { justify-content: space-between; }
+  .lab { font-size: 13px; color: var(--ink-2); margin: 0; }
+  .lab strong { color: var(--ink); font-weight: 700; }
+  .ends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+  .phase { font-weight: 900; font-size: 17px; }
+  .cap { margin: 0; font-size: 14px; min-height: 4.8em; }
+  .loop { width: 100%; height: auto; display: block; }
+  .loop .nd rect { fill: var(--paper); stroke: var(--ink); stroke-width: 1.3; transition: fill .3s ease; }
+  .loop .nd.on rect { fill: var(--lime); }
+  .loop text { font-family: var(--body); font-size: 12.5px; font-weight: 700; fill: var(--ink); }
+  .loop .arr { fill: none; stroke: var(--ink); stroke-width: 1.3; }
+  .world { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+  .mapf { position: relative; padding: 0; overflow: hidden; --l: 16px; aspect-ratio: 12 / 5; }
+  .mapf canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
+  .reg { all: unset; cursor: pointer; display: block; padding: 6px 10px 6px 12px; font-size: 13.5px; border-left: 4px solid var(--c, var(--ink)); }
+  .reg:hover { background: rgba(185,224,76,.2); }
+  .reg[aria-pressed="true"] { background: rgba(29,30,27,.06); }
+  .reg:focus-visible { outline: 2px solid var(--leaf); outline-offset: 2px; }
+  .reg b { font-weight: 700; }
+  .reg span { color: var(--ink-2); }
+  .reglist { display: grid; gap: 4px; max-height: 300px; overflow: auto; }
+  .key { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); }
+  .key span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; background: var(--c); }
+  .notes { display: grid; gap: 12px; max-width: 720px; }
+  .notes a { color: inherit; }
+  @media (min-width: 900px) {
+    .bench { grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr); gap: 26px; }
+    .bench-view { top: 16px; padding: 0; background: none; }
+    .bench-view .stage { height: min(620px, calc(100vh - 140px)); min-height: 400px; background-color: var(--veil); }
+    .world { grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); }
+  }
+</style>
+<script src="../assets/poketto.js" defer></script>
+<script src="../assets/related.js" defer></script></head>
+<body>
+<main class="pk-page">
+  <div class="pk-bar">
+    <a class="pk-home" href="../index.html" data-pk-wordmark title="回到 Poketto 首页"></a>
+    <div class="pk-label"><a href="../index.html" class="pk-zh">口袋工具箱</a> / ENSO &middot; <span class="pk-zh">地理</span></div>
+  </div>
+
+  <header class="pk-head">
+    <div class="pk-kicker">
+      <span class="pk-label">Tool No.11</span>
+      <span class="pk-label">Wind &middot; Ocean &middot; Feedback</span>
+    </div>
+    <h1 class="pk-title">沃克环流与<br>厄尔尼诺</h1>
+    <svg class="pk-star" viewBox="0 0 40 80" aria-hidden="true"><path d="M20 0 C21.2 26 22.5 33 40 38 C22.5 43 21.2 52 20 80 C18.8 52 17.5 43 0 38 C17.5 33 18.8 26 20 0Z"/></svg>
+    <div class="pk-br pk-lead">
+      <p class="pk-verse">信风把赤道太平洋的暖水吹到西边，堆在印尼一带。<br>风一弱，暖水往东漫开，雨也跟着搬家。<br>拖动滑杆，从拉尼娜走到厄尔尼诺；或者放一遍完整的循环。</p>
+    </div>
+  </header>
+
+  <div class="bench">
+    <div class="bench-view">
+      <section class="stage pk-br pk-veil" id="stage" aria-label="可拖动旋转的赤道太平洋 3D 剖面">
+        <div class="badge pk-label" id="badge">中性</div>
+        <div class="schematic pk-label">示意图 · 深度和高度都放大了</div>
+        <div class="hint pk-label">拖动旋转 / Drag</div>
+        <div class="nogl" id="nogl" hidden>这个环境打不开 3D 画面。右边的读数、循环说明和下面的世界地图仍然可用。</div>
+      </section>
+      <p class="legend pk-note" id="legend">从南边看赤道太平洋：左边是印尼和澳大利亚，右边是南美。海面和前方剖面的颜色是水温，绿色薄层是温跃层（上面是暖水，下面是冷水）。白色小点是风，云下的竖线是雨。</p>
+      <div class="scale" aria-hidden="true"><span>14°C</span><i id="scaleBar"></i><span>31°C</span></div>
+    </div>
+
+    <div class="bench-ctrl">
+      <section class="panel pk-br pk-veil" aria-label="现在的状态">
+        <div class="pk-h2"><small>State</small>现在的状态</div>
+        <div class="big" id="stName">中性<small>+0.0 °C</small></div>
+        <div class="rows">
+          <div class="r"><b>信风（东风）强度</b><i id="rWind"></i></div>
+          <div class="r"><b>西太平洋暖池海温</b><i id="rWest"></i></div>
+          <div class="r"><b>东太平洋（近南美）海温</b><i id="rEast"></i></div>
+          <div class="r"><b>温跃层深度 西 / 东</b><i id="rTherm"></i></div>
+          <div class="r"><b>海面高度 西比东高</b><i id="rSea"></i></div>
+          <div class="r"><b>上升气流和大雨中心</b><i id="rConv"></i></div>
+          <div class="r"><b>南美沿岸冷水上翻</b><i id="rUp"></i></div>
+        </div>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="Niño 3.4 指数">
+        <div class="row between">
+          <div class="pk-h2"><small>Niño 3.4 index</small>赤道中东太平洋海温距平</div>
+          <span class="lab" id="nLab"></span>
+        </div>
+        <input class="pk-range" type="range" id="nino" min="-2" max="3" step="0.05" value="0" aria-label="Niño 3.4 海温距平，单位摄氏度">
+        <div class="ends"><span>−2 °C 拉尼娜</span><span>0</span><span>+3 °C 厄尔尼诺</span></div>
+        <div class="row" id="nChips" role="group" aria-label="常用状态">
+          <button class="pk-chip zh" type="button" data-n="-1.5">强拉尼娜</button>
+          <button class="pk-chip zh" type="button" data-n="-0.8">拉尼娜</button>
+          <button class="pk-chip zh" type="button" data-n="0">中性</button>
+          <button class="pk-chip zh" type="button" data-n="1">厄尔尼诺</button>
+          <button class="pk-chip zh" type="button" data-n="2.5">2026 年 10 月</button>
+        </div>
+        <p class="lab">距平是比常年同期高或低多少。连续几个月高于 +0.5 °C 算厄尔尼诺，低于 −0.5 °C 算拉尼娜。「2026 年 10 月」是美国 NOAA 在 2026 年 11 月 12 日公布的月值 +2.5 °C。</p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="一个完整的循环">
+        <div class="row between">
+          <div class="pk-h2"><small>One cycle</small>放一遍循环</div>
+          <span class="lab" id="mLab"></span>
+        </div>
+        <div class="row">
+          <button class="pk-chip zh" type="button" id="play" aria-pressed="false">播放循环</button>
+          <button class="pk-chip zh" type="button" id="prev">上一步</button>
+          <button class="pk-chip zh" type="button" id="next">下一步</button>
+        </div>
+        <input class="pk-range" type="range" id="month" min="0" max="36" step="0.05" value="0" aria-label="循环里的月份，共三年">
+        <div class="ends"><span>第 1 年 1 月</span><span>第 2 年</span><span>第 3 年 12 月</span></div>
+        <div class="phase" id="phase">拖动或播放，看一次厄尔尼诺怎样出现、长大、退去</div>
+        <p class="cap pk-note" id="cap">循环会带动上面的 3D 剖面和指数滑杆。一共三年：第一年长出厄尔尼诺，第二年转成拉尼娜，第三年回到中性。</p>
+        <svg class="loop" id="loop" viewBox="0 0 320 196" role="img" aria-label="比耶克内斯反馈环：信风减弱，暖水东移，东边变暖，东西温差变小，信风更弱">
+          <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#1d1e1b"/></marker></defs>
+          <path class="arr" d="M228 26 C268 30 282 50 280 74" marker-end="url(#ah)"/>
+          <path class="arr" d="M280 122 C282 148 262 168 228 172" marker-end="url(#ah)"/>
+          <path class="arr" d="M92 172 C58 168 38 148 40 122" marker-end="url(#ah)"/>
+          <path class="arr" d="M40 74 C38 50 58 30 92 26" marker-end="url(#ah)"/>
+          <g class="nd" data-i="0"><rect x="95" y="6" width="130" height="40"/><text x="160" y="22" text-anchor="middle"><tspan>信风减弱</tspan><tspan x="160" dy="15" font-weight="400">东风吹不动暖水</tspan></text></g>
+          <g class="nd" data-i="1"><rect x="185" y="78" width="130" height="40"/><text x="250" y="94" text-anchor="middle"><tspan>暖水往东漫开</tspan><tspan x="250" dy="15" font-weight="400">温跃层变平</tspan></text></g>
+          <g class="nd" data-i="2"><rect x="95" y="150" width="130" height="40"/><text x="160" y="166" text-anchor="middle"><tspan>东太平洋变暖</tspan><tspan x="160" dy="15" font-weight="400">冷水翻不上来</tspan></text></g>
+          <g class="nd" data-i="3"><rect x="5" y="78" width="130" height="40"/><text x="70" y="94" text-anchor="middle"><tspan>东西温差变小</tspan><tspan x="70" dy="15" font-weight="400">沃克环流变弱</tspan></text></g>
+        </svg>
+        <p class="lab" id="loopLab">这个环叫比耶克内斯反馈：每一步都让下一步更强，所以厄尔尼诺一旦起头就会自己长大。</p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="视角和显示">
+        <div class="pk-h2"><small>View</small>视角和显示</div>
+        <div class="row" id="views" role="group" aria-label="视角">
+          <button class="pk-chip zh" type="button" data-v="tilt" aria-pressed="true">斜着看</button>
+          <button class="pk-chip zh" type="button" data-v="side" aria-pressed="false">正面剖面</button>
+          <button class="pk-chip zh" type="button" data-v="top" aria-pressed="false">俯视海温</button>
+        </div>
+        <div class="row">
+          <label class="pk-check"><input type="checkbox" id="tWind" checked>风</label>
+          <label class="pk-check"><input type="checkbox" id="tCloud" checked>云和雨</label>
+          <label class="pk-check"><input type="checkbox" id="tTherm" checked>温跃层</label>
+          <label class="pk-check"><input type="checkbox" id="tText" checked>文字</label>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="notes" style="max-width:none">
+    <div class="pk-h2"><small>Around the world</small>影响传到哪里</div>
+    <p class="pk-note" style="max-width:720px">雨带搬家会改变高空的气流，影响传到很远的地方。地图跟着上面的指数变：高于 +0.5 °C 显示厄尔尼诺的倾向，低于 −0.5 °C 显示拉尼娜的倾向，颜色越深事件越强。点地图上的色块或右边的条目看说明。</p>
+    <div class="row">
+      <div class="row" id="seasons" role="group" aria-label="季节">
+        <button class="pk-chip zh" type="button" data-s="djf" aria-pressed="true">北半球冬季（12 到 2 月）</button>
+        <button class="pk-chip zh" type="button" data-s="jja" aria-pressed="false">北半球夏季（6 到 8 月）</button>
+      </div>
+      <div class="key">
+        <span style="--c:#3f8fb5">偏湿</span><span style="--c:#c98a3a">偏干</span><span style="--c:#d4402a">偏暖</span><span style="--c:#5b6fb8">偏冷</span><span style="--c:#8a8c82">其他</span>
+      </div>
+    </div>
+    <div class="world">
+      <div class="mapf pk-br pk-veil"><canvas id="map" role="img" aria-label="以太平洋为中心的世界地图，标出当前状态下偏湿、偏干、偏暖、偏冷的地区"></canvas></div>
+      <div class="panel pk-br pk-veil" aria-live="polite">
+        <div class="pk-h2" id="wTitle"><small>Tendency</small>中性</div>
+        <p class="lab" id="wDetail">指数在 ±0.5 °C 之间时，没有固定的偏向。把上面的滑杆拖到厄尔尼诺或拉尼娜试试。</p>
+        <div class="reglist" id="regList"></div>
+      </div>
+    </div>
+    <p class="lab" style="max-width:720px">这些是过去多次事件平均出来的倾向，不是每次都会发生，也会被别的因素盖过。整理自 NOAA（Climate.gov、气候预测中心）的 ENSO 影响图和日本气象厅的统计，中国部分是常见的研究结论，只写了较确定的几条。</p>
+  </section>
+
+  <section class="notes">
+    <div class="pk-h2"><small>How to read</small>怎么读这张图</div>
+    <p class="pk-note"><b>平常：信风把暖水吹到西边。</b>赤道上常年吹东风（信风），表层暖水被推到西太平洋，堆成一个 29 °C 以上的暖池，那边的海面比南美高出约半米，温跃层也被压到一两百米深。东边的暖水被吹走，下面的冷水翻上来，所以秘鲁外海又冷又富营养，是大渔场。</p>
+    <p class="pk-note"><b>沃克环流是空气的那一半。</b>暖池上空空气受热上升，形成积雨云和大雨；空气在高空往东流，到东太平洋冷水上空下沉，再贴着海面作为信风吹回西边。海和风互相维持：温差让风吹，风又维持温差。</p>
+    <p class="pk-note"><b>厄尔尼诺：环流变弱，雨往东搬。</b>信风减弱时，堆在西边的暖水往东流回，温跃层变平，东边冷水翻不上来，中东太平洋变暖。上升气流和大雨跟着暖水搬到太平洋中部，印尼和澳大利亚变干，秘鲁沿岸反而下大雨。</p>
+    <p class="pk-note"><b>拉尼娜：环流变强。</b>信风比平常更强，暖水更往西挤，冷水从东边一直伸到太平洋中部，印尼和澳大利亚雨更多。</p>
+    <p class="pk-note"><b>为什么会来回摆。</b>比耶克内斯反馈让变化自己放大，但赤道上的暖水总量有限。厄尔尼诺把西边积攒的热量放掉之后，温跃层变浅，东边重新变冷，往往接着转成拉尼娜。一轮大约 2 到 7 年，很不规则；事件多在春夏开始，在北半球冬季前后最强。</p>
+  </section>
+
+  <section class="notes">
+    <div class="pk-h2"><small>The model</small>关于这个模型</div>
+    <p class="pk-note">这是教学示意，不是数值模拟。海温、温跃层深度、风的强弱和对流中心的位置，都是按指数从几组典型数值插值出来的，量级参考了观测（暖池约 29 到 30 °C，平常温跃层西边约 150 到 200 米、东边约 50 米，西边海面高约 0.5 米），具体数字不要当成某一年的实测。</p>
+    <p class="pk-note">循环里的月份是一个理想化的例子：峰值放在第一年 12 月和第二年 12 月，西风爆发和开尔文波（沿赤道向东传的波，两三个月横跨太平洋）的时间也是典型值。真实事件的强弱、长短和先后都会不一样。</p>
+    <p class="pk-note">3D 画面里海水深度放大了许多倍，大气高度也压缩过，南美和印尼的位置只是示意。地图上的影响区域是手画的大致范围。</p>
+  </section>
+
+  <footer class="pk-foot">
+    <a class="pk-back pk-label" href="../index.html">
+      <svg viewBox="0 0 34 10" aria-hidden="true"><path d="M34 5 H2 M7 1 L2 5 L7 9" fill="none" stroke="#1d1e1b" stroke-width="1.4"/></svg>
+      回到口袋 <span class="zh">/ Back to the pocket</span>
+    </a>
+    <span class="pk-label">Poketto &middot; Made with curiosity</span>
+  </footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function clamp(v, a, b){ return v < a ? a : v > b ? b : v; }
+  function sm(a, b, x){ var t = clamp((x-a)/(b-a), 0, 1); return t*t*(3-2*t); }
+  function g(x, c, w){ return Math.exp(-Math.pow((x-c)/w, 2)); }
+
+  /* ---------- the model: everything is read off the Niño 3.4 anomaly S.n ----------
+     x runs from -1 (120°E, Indonesia) to +1 (80°W, Peru); z is north-south across the band. */
+  var S = { n: 0, kelvin: 0, kx: -0.3, recharge: 0, wwb: 0 };   // kelvin, recharge, wwb are only set by the cycle
+  function lonOf(x){ return 120 + (x+1)*80; }
+  function lonText(x){ var L = Math.round(lonOf(x)/5)*5; if(L === 180) return '180°'; return L < 180 ? L+'°E' : (360-L)+'°W'; }
+  function T0(x){ return 29.6 - 6.2*Math.pow(sm(-0.5, 1.0, x), 1.15); }            // climatological SST along the equator
+  function pat(x, n){                                                                // where the anomaly sits
+    var west = -0.18*g(x, -0.85, 0.25);                                              // the far west changes the other way, a little
+    if(n >= 0) return sm(-0.55, 0.35, x) + west;                                     // El Niño: warmest from the central Pacific to the coast
+    return sm(-0.7, 0.0, x)*(1 - 0.3*sm(0.5, 1, x)) + west;                          // La Niña: cold tongue reaching far west
+  }
+  var NP = 1, NN = 1;                                                                // mean over Niño 3.4 (170°W–120°W) = 1
+  (function(){ var a = 0, b = 0, k = 0; for(var x = -0.125; x <= 0.5; x += 0.005){ a += pat(x, 1); b += pat(x, -1); k++; } NP = k/a; NN = k/b; })();
+  function wind(){ return clamp(1 - 0.3*S.n, 0.12, 1.6); }                           // trade winds, 1 = normal
+  function upw(){ return clamp(wind(), 0, 1.5); }                                    // upwelling off Peru follows the wind
+  function tilt(){ return clamp(1 - 0.36*S.n, 0.06, 1.55); }                         // thermocline slope, 1 = normal
+  function h0(x){ return 165 - 120*sm(-0.85, 0.95, x); }                             // normal thermocline: ~165 m west, ~45 m east
+  function thermo(x, z){
+    z = z || 0;
+    var h = 105 + (h0(x) - 105)*tilt();
+    h += S.recharge*30*(1 - sm(-1, 0.4, x));                                         // warm water piling up in the west
+    h += S.kelvin*55*g(x, S.kx, 0.14)*Math.exp(-z*z/0.08);                           // Kelvin wave, trapped on the equator
+    return Math.max(18, h + 25*z*z);
+  }
+  function sst(x, z){
+    z = z || 0;
+    var n = S.n, t = T0(x) + n*pat(x, n)*(n >= 0 ? NP : NN);
+    t += S.kelvin*0.8*g(x, S.kx, 0.16)*sm(-0.3, 0.7, x);                             // the wave warms the surface where the thermocline is shallow
+    t += (1 - Math.exp(-z*z/0.12))*1.5*sm(-0.3, 0.9, x)*upw();                       // the cold tongue is narrow: off the equator is warmer
+    return t;
+  }
+  function convX(){ return clamp(-0.72 + 0.3*S.n, -0.95, 0.12); }                    // centre of rising air and heavy rain
+  function eastRain(){ return clamp((S.n - 1.6)/1.2, 0, 1); }                        // very strong events also rain on the Peru coast
+  function westCell(){ return clamp((S.n - 0.4)/2, 0, 0.6); }                        // sinking air over Indonesia during El Niño
+  function seaCm(){ return Math.round(50*tilt()/5)*5; }
+  function stateName(n){
+    var a = Math.abs(n);
+    if(a < 0.5) return '中性';
+    var lv = a < 1 ? '弱' : a < 1.5 ? '中等' : a < 2 ? '强' : '极强';
+    return lv + (n > 0 ? '厄尔尼诺' : '拉尼娜');
+  }
+  function signed(n){ return (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1); }
+
+  /* ---------- readouts ---------- */
+  var hooks = { map: function(){} };
+  function readout(){
+    var n = S.n, w = wind(), xc = convX();
+    $('stName').innerHTML = stateName(n) + '<small>' + signed(n) + ' °C</small>';
+    $('badge').innerHTML = stateName(n) + '<small>Niño 3.4 ' + signed(n) + ' °C</small>';
+    $('nLab').innerHTML = '<strong>' + signed(n) + ' °C</strong>';
+    $('rWind').textContent = Math.round(w*100) + '% 平常';
+    $('rWest').textContent = sst(-0.8).toFixed(1) + ' °C';
+    $('rEast').textContent = sst(0.9).toFixed(1) + ' °C';
+    $('rTherm').textContent = Math.round(thermo(-0.85)/5)*5 + ' 米 / ' + Math.round(thermo(0.9)/5)*5 + ' 米';
+    $('rSea').textContent = seaCm() <= 5 ? '几乎一样高' : '约 ' + seaCm() + ' 厘米';
+    var where = xc < -0.55 ? '印尼一带' : xc < -0.2 ? '西太平洋' : '太平洋中部';
+    $('rConv').textContent = where + ' ' + lonText(xc) + (eastRain() > 0.15 ? '，南美沿岸也多雨' : '');
+    $('rUp').textContent = w > 1.2 ? '很强' : w > 0.85 ? '正常' : w > 0.5 ? '偏弱' : '几乎停了';
+    hooks.map();
+  }
+  function setN(v, fromCycle){
+    S.n = clamp(v, -2, 3); $('nino').value = S.n;
+    if(!fromCycle){ stopCycle(); S.kelvin = 0; S.recharge = 0; S.wwb = 0; }
+    readout();
+  }
+  $('nino').addEventListener('input', function(){ setN(parseFloat(this.value)); });
+  [].forEach.call(document.querySelectorAll('[data-n]'), function(b){
+    b.addEventListener('click', function(){ setN(parseFloat(b.getAttribute('data-n'))); });
+  });
+
+  /* ---------- one idealised cycle: three years, month 0 = January of year 1 ---------- */
+  var KEYS = [[0,-0.1],[2,0],[3.5,0.3],[5,0.7],[7,1.3],[9,1.9],[11,2.3],[12,2.3],[14,1.7],[16,0.8],[17.5,0.1],[19,-0.5],[21,-1],[23,-1.2],[24.5,-1.1],[27,-0.7],[30,-0.25],[33,-0.05],[36,0]];
+  function keyN(t){
+    for(var i = 1; i < KEYS.length; i++) if(t <= KEYS[i][0]){
+      var a = KEYS[i-1], b = KEYS[i], u = sm(a[0], b[0], t); return a[1] + (b[1]-a[1])*u;
+    }
+    return 0;
+  }
+  function bump(t, a, b){ return t <= a || t >= b ? 0 : Math.sin(Math.PI*(t-a)/(b-a)); }
+  var PH = [
+    [0, 2.2, '蓄热', '信风正常，暖水不断被吹到西太平洋，西边的温跃层越压越深。这是在为下一次厄尔尼诺攒热量。', ''],
+    [2.2, 3.6, '西风爆发', '西太平洋突然吹起一阵西风（红色的点），持续几周，把一部分暖水往东推。它常常是厄尔尼诺的扳机。', ''],
+    [3.6, 6.5, '开尔文波东传', '被推出去的暖水变成一个沿赤道向东走的波，两三个月走到南美。波经过的地方温跃层被压深，海面变暖。', ''],
+    [6.5, 11, '自己长大', '东边变暖，东西温差变小，信风更弱，暖水更往东。这就是下面这个反馈环，一圈一圈放大。', 'spin'],
+    [11, 13, '峰值', '厄尔尼诺多在北半球冬季前后最强。雨带搬到太平洋中部，印尼和澳大利亚偏干，秘鲁沿岸下大雨。', 'all'],
+    [13, 18, '放热、转向', '暖水往东、往两极散开，赤道上攒的热量被放掉。这次传过去的是让温跃层变浅的波，东边重新冷下来。', ''],
+    [18, 25, '拉尼娜', '信风变得比平常还强，冷水一直伸到太平洋中部。反馈环朝反方向转：信风增强，暖水西挤，东边更冷，温差更大。', 'rev'],
+    [25, 36, '回到中性', '异常慢慢退去，暖水又开始在西边积攒。下一轮什么时候来不一定，间隔 2 到 7 年。', '']
+  ];
+  var NODE_F = [['信风减弱','东风吹不动暖水'],['暖水往东漫开','温跃层变平'],['东太平洋变暖','冷水翻不上来'],['东西温差变小','沃克环流变弱']];
+  var NODE_R = [['信风增强','东风把暖水推走'],['暖水往西挤','温跃层更陡'],['东太平洋变冷','冷水大量上翻'],['东西温差变大','沃克环流变强']];
+  var nodes = document.querySelectorAll('#loop .nd'), nodeDir = 'f';
+  function setNodes(dir, on){
+    if(dir !== nodeDir){
+      nodeDir = dir; var T = dir === 'r' ? NODE_R : NODE_F;
+      [].forEach.call(nodes, function(nd, i){ var sp = nd.querySelectorAll('tspan'); sp[0].textContent = T[i][0]; sp[1].textContent = T[i][1]; });
+      $('loopLab').textContent = dir === 'r' ? '同一个环反过来转就是拉尼娜：信风越强，东西温差越大，信风又更强。' : '这个环叫比耶克内斯反馈：每一步都让下一步更强，所以厄尔尼诺一旦起头就会自己长大。';
+    }
+    [].forEach.call(nodes, function(nd, i){ nd.classList.toggle('on', on === 'all' || on === i); });
+  }
+  var C = { t: 0, playing: false, active: false, phase: -1 };
+  function phaseAt(t){ for(var i = 0; i < PH.length; i++) if(t < PH[i][1]) return i; return PH.length - 1; }
+  function applyCycle(t, now){
+    C.t = t; C.active = true; $('month').value = t;
+    var yr = Math.min(3, Math.floor(t/12) + 1), mo = Math.min(12, Math.floor(t % 12) + 1);
+    if(t >= 36){ yr = 3; mo = 12; }
+    $('mLab').innerHTML = '<strong>第 ' + yr + ' 年 ' + mo + ' 月</strong>';
+    S.recharge = sm(0, 3, t)*(1 - sm(5, 9, t)) - 0.6*sm(12, 15, t)*(1 - sm(19, 25, t));
+    var k1 = bump(t, 3, 6.6), k2 = bump(t, 13, 16.6);
+    S.kelvin = k1 - 0.7*k2;
+    S.kx = k1 > 0 ? -0.45 + 1.45*(t-3)/3.6 : k2 > 0 ? -0.4 + 1.4*(t-13)/3.6 : -0.3;
+    S.wwb = bump(t, 2.2, 3.6);
+    var p = phaseAt(t);
+    if(p !== C.phase){ C.phase = p; $('phase').textContent = PH[p][2]; $('cap').textContent = PH[p][3]; }
+    var mode = PH[p][4];
+    if(mode === 'spin') setNodes('f', Math.floor((now || performance.now())/750) % 4);
+    else if(mode === 'rev') setNodes('r', Math.floor((now || performance.now())/750) % 4);
+    else if(mode === 'all') setNodes('f', 'all');
+    else setNodes(t > 18 ? 'r' : 'f', -1);
+    setN(keyN(t), true);
+  }
+  function stopCycle(){
+    if(!C.active) return;
+    C.playing = false; C.active = false; $('play').textContent = '播放循环'; $('play').setAttribute('aria-pressed', 'false');
+    S.kelvin = 0; S.recharge = 0; S.wwb = 0; setNodes('f', -1);
+  }
+  function togglePlay(){
+    if(C.playing){ C.playing = false; $('play').textContent = '继续播放'; $('play').setAttribute('aria-pressed', 'false'); return; }
+    if(!C.active || C.t >= 36) C.t = 0;
+    C.playing = true; $('play').textContent = '暂停'; $('play').setAttribute('aria-pressed', 'true');
+    applyCycle(C.t);
+  }
+  $('play').addEventListener('click', togglePlay);
+  $('month').addEventListener('input', function(){ applyCycle(parseFloat(this.value)); });
+  $('prev').addEventListener('click', function(){ var p = phaseAt(C.active ? C.t - 0.01 : 0); if(C.active && C.t - PH[p][0] < 0.3 && p > 0) p--; applyCycle(PH[p][0]); });
+  $('next').addEventListener('click', function(){ var p = C.active ? phaseAt(C.t) + 1 : 0; applyCycle(PH[Math.min(p, PH.length-1)][0] + 0.01); });
+  function tickCycle(dt, now){
+    if(!C.playing) { if(C.active && /spin|rev/.test(PH[C.phase][4])) applyCycle(C.t, now); return; }
+    var t = C.t + dt/0.9;
+    if(t >= 36){ t = 36; C.playing = false; $('play').textContent = '再放一遍'; $('play').setAttribute('aria-pressed', 'false'); }
+    applyCycle(t, now);
+  }
+
+  /* ---------- colours for water temperature ---------- */
+  var PAL = [[14,'#1f3a5f'],[18,'#2f6a9a'],[22,'#4fa3b5'],[25,'#9fcfb0'],[27,'#ecd98c'],[28.5,'#f0a94a'],[30,'#e0662e'],[31.5,'#b8321f']];
+  var PALC = PAL.map(function(p){ var h = parseInt(p[1].slice(1), 16); return [p[0], (h>>16&255)/255, (h>>8&255)/255, (h&255)/255]; });
+  function colT(t, out, o){
+    var a = PALC[0], b = PALC[PALC.length-1];
+    if(t <= a[0]){ b = a; } else for(var i = 1; i < PALC.length; i++) if(t <= PALC[i][0]){ a = PALC[i-1]; b = PALC[i]; break; }
+    var u = b === a ? 0 : clamp((t-a[0])/(b[0]-a[0]), 0, 1);
+    if(t > PALC[PALC.length-1][0]) { a = b = PALC[PALC.length-1]; u = 0; }
+    out[o] = a[1] + (b[1]-a[1])*u; out[o+1] = a[2] + (b[2]-a[2])*u; out[o+2] = a[3] + (b[3]-a[3])*u;
+  }
+  $('scaleBar').style.background = 'linear-gradient(90deg,' + PAL.map(function(p){ return p[1] + ' ' + ((p[0]-14)/17.5*100).toFixed(1) + '%'; }).join(',') + ')';
+  function waterT(x, d, z){                                                          // temperature at depth d (m)
+    var s = sst(x, z), h = thermo(x, z), u = sm(h - 20, h + 40, d);
+    var tw = s - 1.2*d/h, tc = 18 - 6*sm(h, h + 220, d);
+    return tw*(1-u) + tc*u;
+  }
+
+  readout();
+  setNodes('f', -1);
+
+  /* ---------- 3D ---------- */
+  var three = typeof THREE !== 'undefined', renderer = null;
+  if(three){ try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch(e){ renderer = null; } }
+  var stage = $('stage');
+  var frameHooks = [];
+  if(!renderer){ $('nogl').hidden = false; }
+  else (function(){
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    var dom = renderer.domElement; dom.style.touchAction = 'none';
+    stage.insertBefore(dom, stage.firstChild);
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    var VIEWS = { tilt: [0.32, 0.42], side: [0, 0.05], top: [0, 1.38] };
+    var cam = { th: 0.32, ph: 0.42, tth: 0.32, tph: 0.42, rad: 7 };
+    function placeCam(){
+      camera.position.set(cam.rad*Math.cos(cam.ph)*Math.sin(cam.th), 0.1 + cam.rad*Math.sin(cam.ph), cam.rad*Math.cos(cam.ph)*Math.cos(cam.th));
+      camera.lookAt(0, 0.1, 0);
+    }
+    function resize(){
+      var W = stage.clientWidth || 360, H = stage.clientHeight || 360;
+      renderer.setSize(W, H); camera.aspect = W/H; camera.updateProjectionMatrix();
+      cam.rad = Math.max(6.6, 9.4/camera.aspect); placeCam();
+      if(window.Poketto) Poketto.repaint();
+    }
+    scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+    var sun = new THREE.DirectionalLight(0xffffff, 0.6); sun.position.set(-2, 5, 4); scene.add(sun);
+
+    // world units: X = 2.2x, depth 300 m = 1.1, atmosphere ~1.3 high; Z = -0.75 (north) .. +0.75 (equator, front cut)
+    var XS = 2.2, DS = 1.1/300;
+    function zOf(Z){ return Z/1.5 - 0.5; }                                           // model z: -1 back .. 0 front (equator)
+    function eta(x){ return -0.045*tilt()*x; }                                       // sea level, west higher (hugely exaggerated)
+    function makeGrid(nx, ny, mat){
+      var n = (nx+1)*(ny+1), geo = new THREE.BufferGeometry(), idx = [];
+      var pos = new Float32Array(n*3), col = new Float32Array(n*3);
+      for(var j = 0; j < ny; j++) for(var i = 0; i < nx; i++){
+        var a = j*(nx+1) + i, b = a + 1, c = a + nx + 1, d = c + 1; idx.push(a, c, b, b, c, d);
+      }
+      geo.setIndex(idx);
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      var m = new THREE.Mesh(geo, mat); scene.add(m);
+      return { nx: nx, ny: ny, pos: pos, col: col, geo: geo, mesh: m };
+    }
+    var wmat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    var surf = makeGrid(88, 16, wmat), sect = makeGrid(88, 44, wmat), wall = makeGrid(16, 44, wmat);
+    var bottom = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 1.5), new THREE.MeshBasicMaterial({ color: 0x1f3a5f, side: THREE.DoubleSide }));
+    bottom.rotation.x = -Math.PI/2; bottom.position.y = -1.1; scene.add(bottom);
+    var back = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 1.1), new THREE.MeshBasicMaterial({ color: 0x24476e }));
+    back.position.set(0, -0.55, -0.75); scene.add(back);
+    var tc = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 0.03, 88, 1), new THREE.MeshBasicMaterial({ color: 0xb9e04c, side: THREE.DoubleSide }));
+    tc.position.z = 0.752; scene.add(tc);
+    var tmp = [0, 0, 0];
+    function updateWater(){
+      var i, j, k, x, Z, d, z;
+      for(j = 0; j <= 16; j++) for(i = 0; i <= 88; i++){                            // sea surface
+        k = (j*89 + i)*3; x = i/44 - 1; Z = -0.75 + j*1.5/16; z = zOf(Z);
+        surf.pos[k] = x*XS; surf.pos[k+1] = eta(x); surf.pos[k+2] = Z;
+        colT(sst(x, z), surf.col, k);
+      }
+      for(j = 0; j <= 44; j++) for(i = 0; i <= 88; i++){                            // front cut along the equator
+        k = (j*89 + i)*3; x = i/44 - 1; d = j*300/44;
+        sect.pos[k] = x*XS; sect.pos[k+1] = j ? -d*DS : eta(x); sect.pos[k+2] = 0.75;
+        colT(waterT(x, d, 0), sect.col, k);
+      }
+      for(j = 0; j <= 44; j++) for(i = 0; i <= 16; i++){                            // west end wall
+        k = (j*17 + i)*3; Z = -0.75 + i*1.5/16; d = j*300/44;
+        wall.pos[k] = -XS; wall.pos[k+1] = j ? -d*DS : eta(-1); wall.pos[k+2] = Z;
+        colT(waterT(-1, d, zOf(Z)), wall.col, k);
+      }
+      [surf, sect, wall].forEach(function(gq){ gq.geo.attributes.position.needsUpdate = true; gq.geo.attributes.color.needsUpdate = true; gq.geo.computeBoundingSphere(); });
+      var tp = tc.geometry.attributes.position;
+      for(i = 0; i <= 88; i++){ x = i/44 - 1; var y = -thermo(x, 0)*DS; tp.setXYZ(i, x*XS, y + 0.013, 0); tp.setXYZ(i + 89, x*XS, y - 0.013, 0); }
+      tp.needsUpdate = true; tc.geometry.computeBoundingSphere();
+    }
+
+    /* land: South America with the Andes on the right, Indonesia and Australia on the left (positions schematic) */
+    function lam(c){ return new THREE.MeshLambertMaterial({ color: c }); }
+    function box(w, h, d, x, y, z, c){ var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lam(c)); m.position.set(x, y, z); scene.add(m); return m; }
+    box(0.5, 1.16, 1.5, 2.45, -0.52, 0, 0x7a6a50);
+    var andes = new THREE.Shape(); andes.moveTo(-0.25, 0); andes.lineTo(-0.02, 0.34); andes.lineTo(0.12, 0.22); andes.lineTo(0.25, 0); andes.lineTo(-0.25, 0);
+    var ag = new THREE.ExtrudeGeometry(andes, { depth: 1.5, bevelEnabled: false }); ag.translate(0, 0.06, -0.75);
+    var am = new THREE.Mesh(ag, lam(0x9b8a68)); am.position.x = 2.45; scene.add(am);
+    [[-2.02, -0.45, 0.16, 0.09], [-2.06, -0.02, 0.15, 0.1], [-1.86, 0.3, 0.12, 0.07], [-2.08, 0.5, 0.12, 0.08], [-1.72, -0.2, 0.09, 0.05]].forEach(function(p){
+      var m = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), lam(0x5f8a4a)); m.scale.set(p[2], p[3], p[2]*0.8); m.position.set(p[0], eta(-0.9), p[1]); scene.add(m);
+    });
+    var frameG = new THREE.BufferGeometry().setFromPoints([
+      [-1,0,-1],[1,0,-1], [-1,1,-1],[1,1,-1], [-1,0,-1],[-1,1,-1], [1,0,-1],[1,1,-1], [-1,1,-1],[-1,1,1], [1,1,-1],[1,1,1], [-1,1,1],[1,1,1]
+    ].map(function(p){ return new THREE.Vector3(p[0]*XS, p[1]*1.3, p[2]*0.75); }));
+    scene.add(new THREE.LineSegments(frameG, new THREE.LineBasicMaterial({ color: 0x1d1e1b, transparent: true, opacity: 0.16 })));
+    var dl = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.25*XS, 0.01, -0.75), new THREE.Vector3(-0.25*XS, 0.01, 0.75)]),
+      new THREE.LineDashedMaterial({ color: 0x1d1e1b, dashSize: 0.05, gapSize: 0.04, transparent: true, opacity: 0.5 }));
+    dl.computeLineDistances(); scene.add(dl);
+
+    /* labels */
+    var FONT = '"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif';
+    var labels = [];
+    function label(txt, col, h){
+      var px = 44, c = document.createElement('canvas'), x = c.getContext('2d');
+      x.font = '900 ' + px + 'px ' + FONT; var w = Math.ceil(x.measureText(txt).width) + 24;
+      c.width = w; c.height = 64; x.font = '900 ' + px + 'px ' + FONT; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.lineJoin = 'round'; x.lineWidth = 9; x.strokeStyle = 'rgba(239,238,233,.95)'; x.strokeText(txt, w/2, 34);
+      x.fillStyle = col; x.fillText(txt, w/2, 34);
+      var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }));
+      s.scale.set(h*w/64, h, 1); s.renderOrder = 10; scene.add(s); labels.push(s);
+      return s;
+    }
+    label('印尼 · 澳大利亚方向', '#1d1e1b', 0.15).position.set(-1.95, 0.22, 0.2);
+    label('南美 · 秘鲁', '#1d1e1b', 0.16).position.set(2.45, 0.55, 0.3);
+    label('180° 日期变更线', '#4a4c45', 0.12).position.set(-0.25*XS, 0.06, -0.85);
+    var Lwarm = label('暖池', '#b8321f', 0.17), Lcold = label('冷水上翻', '#1f3a5f', 0.15);
+    var Ltc = label('温跃层', '#1d1e1b', 0.14), Lwind = label('信风（东风）', '#1d1e1b', 0.14), Lup = label('高空回流', '#4a4c45', 0.13);
+    var Lkel = label('开尔文波 →', '#1d1e1b', 0.15), Lwwb = label('西风爆发 →', '#d4402a', 0.15), Lrain = label('上升气流 · 大雨', '#1d1e1b', 0.14);
+    function placeLabels(){
+      var xc = convX(), wx = -0.95 + 0.5*clamp(S.n/2.5, 0, 1);
+      Lwarm.position.set(wx*XS + 0.5, eta(wx) + 0.06, 0.4);
+      Lcold.position.set(0.82*XS, -0.25, 0.8); Lcold.material.opacity = clamp(upw(), 0, 1);
+      Ltc.position.set(-0.45*XS, -thermo(-0.45, 0)*DS - 0.09, 0.8);
+      Lwind.position.set(0.2*XS, 0.2, 0.8); Lup.position.set(0.2*XS, 1.22, 0.4);
+      Lrain.position.set(xc*XS, 1.28, 0.3);
+      Lkel.position.set(S.kx*XS, -thermo(S.kx, 0)*DS - 0.12, 0.8);
+      Lwwb.position.set(-0.45*XS, 0.3, 0.8);
+    }
+
+    /* air: particles running round the Walker loop (arc-length lookup so they move evenly) */
+    var seed = 5; function rnd(){ seed = (seed*16807) % 2147483647; return seed/2147483647; }
+    function dotTex(soft){
+      var c = document.createElement('canvas'); c.width = c.height = soft ? 128 : 32;
+      var x = c.getContext('2d'), r = c.width/2, gr = x.createRadialGradient(r, r, 0, r, r, r);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(soft ? .45 : .7, 'rgba(255,255,255,' + (soft ? .7 : 1) + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = gr; x.fillRect(0, 0, c.width, c.height); return new THREE.CanvasTexture(c);
+    }
+    var DOT = dotTex(false), PUFF = dotTex(true), M = 300;
+    function buildLoop(xa, xb, yb, yt, dir){
+      var cx = (xa+xb)/2*XS, rx = Math.max(0.05, (xb-xa)/2*XS), cy = (yb+yt)/2, ry = (yt-yb)/2, raw = [], cum = [0], i;
+      for(i = 0; i <= 400; i++){
+        var th = -Math.PI/2 + dir*2*Math.PI*i/400, c = Math.cos(th), s = Math.sin(th);
+        raw.push([cx + rx*Math.sign(c)*Math.pow(Math.abs(c), 0.3), cy + ry*Math.sign(s)*Math.pow(Math.abs(s), 0.3)]);
+        if(i) cum.push(cum[i-1] + Math.hypot(raw[i][0]-raw[i-1][0], raw[i][1]-raw[i-1][1]));
+      }
+      var L = cum[400], out = new Float32Array((M+1)*2), k = 0;
+      for(i = 0; i <= M; i++){
+        var want = L*i/M; while(k < 399 && cum[k+1] < want) k++;
+        var u = (want - cum[k])/Math.max(1e-6, cum[k+1]-cum[k]);
+        out[i*2] = raw[k][0] + (raw[k+1][0]-raw[k][0])*u; out[i*2+1] = raw[k][1] + (raw[k+1][1]-raw[k][1])*u;
+      }
+      return { p: out, L: L };
+    }
+    function flock(n, color, size){
+      var geo = new THREE.BufferGeometry(), pos = new Float32Array(n*3), col = new Float32Array(n*3);
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      var mat = new THREE.PointsMaterial({ size: size, map: DOT, vertexColors: true, transparent: true, depthWrite: false, alphaTest: 0.05 });
+      var pts = new THREE.Points(geo, mat); pts.frustumCulled = false; scene.add(pts);
+      var f = { n: n, pos: pos, col: col, geo: geo, mat: mat, obj: pts, s: new Float32Array(n), z: new Float32Array(n), j: new Float32Array(n) };
+      var c3 = new THREE.Color(color);
+      for(var i = 0; i < n; i++){ f.s[i] = rnd(); f.z[i] = (rnd()*2-1)*0.7; f.j[i] = (rnd()*2-1); col[i*3] = c3.r; col[i*3+1] = c3.g; col[i*3+2] = c3.b; }
+      return f;
+    }
+    var mainF = flock(560, '#1f4f80', 0.075), westF = flock(200, '#1f4f80', 0.07), wwbF = flock(90, '#d4402a', 0.08), upF = flock(120, '#bfe6f5', 0.05);
+    var LO = '#1f4f80', HI = '#5d5f56', cLo = new THREE.Color(LO), cHi = new THREE.Color(HI);
+    var loops = { xc: 99, main: null, west: null };
+    function moveLoop(f, lp, ds, op){
+      f.mat.opacity = op; f.obj.visible = op > 0.01 && show.wind;
+      if(!f.obj.visible) return;
+      for(var i = 0; i < f.n; i++){
+        var s = (f.s[i] + ds) % 1; if(s < 0) s += 1; f.s[i] = s;
+        var q = Math.floor(s*M), X = lp.p[q*2], Y = lp.p[q*2+1] + f.j[i]*0.035;
+        f.pos[i*3] = X + f.j[i]*0.02; f.pos[i*3+1] = Y; f.pos[i*3+2] = f.z[i];
+        var u = clamp((Y - 0.15)/0.9, 0, 1);
+        f.col[i*3] = cLo.r + (cHi.r-cLo.r)*u; f.col[i*3+1] = cLo.g + (cHi.g-cLo.g)*u; f.col[i*3+2] = cLo.b + (cHi.b-cLo.b)*u;
+      }
+      f.geo.attributes.position.needsUpdate = true; f.geo.attributes.color.needsUpdate = true;
+    }
+    function moveAir(dt){
+      var xc = convX();
+      if(Math.abs(xc - loops.xc) > 0.003){ loops.xc = xc; loops.main = buildLoop(xc, 0.9, 0.1, 1.12, -1); loops.west = buildLoop(-1.0, xc, 0.1, 0.95, 1); }
+      moveLoop(mainF, loops.main, dt*0.55*wind()/loops.main.L, 0.3 + 0.6*clamp(wind()/1.3, 0, 1));
+      var wc = westCell();
+      moveLoop(westF, loops.west, dt*0.8*wc/loops.west.L, clamp(wc/0.45, 0, 0.85));
+      wwbF.mat.opacity = S.wwb; wwbF.obj.visible = S.wwb > 0.01 && show.wind;
+      if(wwbF.obj.visible){
+        for(var i = 0; i < wwbF.n; i++){
+          wwbF.s[i] = (wwbF.s[i] + dt*0.35) % 1;
+          wwbF.pos[i*3] = (-0.85 + 0.8*wwbF.s[i])*XS; wwbF.pos[i*3+1] = 0.1 + wwbF.j[i]*0.05; wwbF.pos[i*3+2] = wwbF.z[i];
+        }
+        wwbF.geo.attributes.position.needsUpdate = true;
+      }
+      var up = upw(); upF.mat.opacity = clamp(up*0.75, 0, 0.9); upF.obj.visible = up > 0.15;
+      if(upF.obj.visible){
+        for(var k = 0; k < upF.n; k++){
+          var x = 0.5 + 0.48*(upF.j[k]*0.5 + 0.5), top = eta(x), deep = -(thermo(x, 0) + 35)*DS;
+          upF.s[k] = (upF.s[k] + dt*0.12*up) % 1;
+          upF.pos[k*3] = x*XS - upF.s[k]*upF.s[k]*0.25; upF.pos[k*3+1] = deep + (top - deep)*upF.s[k]; upF.pos[k*3+2] = 0.765;
+        }
+        upF.geo.attributes.position.needsUpdate = true;
+      }
+    }
+
+    /* clouds and rain over the rising branch; a second, smaller cluster off Peru in very strong El Niño */
+    function cluster(n, w){
+      var list = [];
+      for(var i = 0; i < n; i++){
+        var yf = rnd(), anvil = yf > 0.82 ? 1.8 : 1, c = new THREE.Color('#9aa1aa').lerp(new THREE.Color('#e4e6e9'), yf);
+        var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: PUFF, color: c, transparent: true, depthWrite: false }));
+        var sc = (0.26 + rnd()*0.22)*(yf > 0.82 ? 1.2 : 1)*w;
+        sp.scale.set(sc*1.3, sc, 1); scene.add(sp);
+        list.push({ sp: sp, dx: (rnd()*2-1)*0.1*anvil*w, y: 0.42 + yf*0.72, dz: (rnd()*2-1)*0.55 });
+      }
+      return list;
+    }
+    function rain(n){
+      var geo = new THREE.BufferGeometry(), pos = new Float32Array(n*6);
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      var mat = new THREE.LineBasicMaterial({ color: 0x3f8fb5, transparent: true, opacity: 0.6 });
+      var obj = new THREE.LineSegments(geo, mat); obj.frustumCulled = false; scene.add(obj);
+      var r = { n: n, pos: pos, geo: geo, mat: mat, obj: obj, dx: [], y: [], z: [] };
+      for(var i = 0; i < n; i++){ r.dx.push((rnd()*2-1)*0.09); r.y.push(rnd()*0.42); r.z.push((rnd()*2-1)*0.6); }
+      return r;
+    }
+    var cloudsA = cluster(30, 1), cloudsB = cluster(14, 0.7), rainA = rain(160), rainB = rain(60);
+    function moveClouds(list, cx, op){
+      list.forEach(function(c){ c.sp.position.set((cx + c.dx)*XS, c.y, c.dz); c.sp.material.opacity = op*0.92; c.sp.visible = show.cloud && op > 0.01; });
+    }
+    function moveRain(r, cx, op, dt){
+      r.mat.opacity = op*0.6; r.obj.visible = show.cloud && op > 0.01;
+      if(!r.obj.visible) return;
+      for(var i = 0; i < r.n; i++){
+        r.y[i] -= dt*1.4; if(r.y[i] < 0.02) r.y[i] = 0.42;
+        var X = (cx + r.dx[i])*XS, k = i*6;
+        r.pos[k] = X; r.pos[k+1] = r.y[i]; r.pos[k+2] = r.z[i]; r.pos[k+3] = X; r.pos[k+4] = r.y[i] - 0.06; r.pos[k+5] = r.z[i];
+      }
+      r.geo.attributes.position.needsUpdate = true;
+    }
+
+    /* view controls and toggles */
+    var show = { wind: true, cloud: true, therm: true, text: true };
+    [['tWind', 'wind'], ['tCloud', 'cloud'], ['tTherm', 'therm'], ['tText', 'text']].forEach(function(p){
+      $(p[0]).addEventListener('change', function(){ show[p[1]] = this.checked; });
+    });
+    var viewBtns = document.querySelectorAll('[data-v]');
+    [].forEach.call(viewBtns, function(b){
+      b.addEventListener('click', function(){
+        var v = VIEWS[b.getAttribute('data-v')]; cam.tth = v[0]; cam.tph = v[1];
+        [].forEach.call(viewBtns, function(o){ o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+      });
+    });
+    var dragging = false, lx = 0, ly = 0;
+    dom.addEventListener('pointerdown', function(ev){ dragging = true; lx = ev.clientX; ly = ev.clientY; dom.setPointerCapture(ev.pointerId); });
+    dom.addEventListener('pointermove', function(ev){
+      if(!dragging) return;
+      cam.th = clamp(cam.th - (ev.clientX - lx)*0.007, -1.1, 1.1); cam.ph = clamp(cam.ph + (ev.clientY - ly)*0.007, -0.05, 1.45);
+      cam.tth = cam.th; cam.tph = cam.ph; lx = ev.clientX; ly = ev.clientY; placeCam();
+      [].forEach.call(viewBtns, function(o){ o.setAttribute('aria-pressed', 'false'); });
+    });
+    dom.addEventListener('pointerup', function(){ dragging = false; });
+    dom.addEventListener('pointercancel', function(){ dragging = false; });
+
+    resize();
+    if(window.ResizeObserver) new ResizeObserver(resize).observe(stage); else window.addEventListener('resize', resize);
+
+    var lastKey = '';
+    frameHooks.push(function(dt){
+      var key = [S.n, S.kelvin, S.kx, S.recharge].map(function(v){ return v.toFixed(3); }).join();
+      if(key !== lastKey){ lastKey = key; updateWater(); }
+      if(Math.abs(cam.th - cam.tth) > 1e-4 || Math.abs(cam.ph - cam.tph) > 1e-4){ cam.th += (cam.tth - cam.th)*0.12; cam.ph += (cam.tph - cam.ph)*0.12; placeCam(); }
+      moveAir(dt);
+      var xc = convX(), er = eastRain();
+      moveClouds(cloudsA, xc, 1); moveRain(rainA, xc, 1, dt);
+      moveClouds(cloudsB, 0.8, er); moveRain(rainB, 0.8, er, dt);
+      tc.visible = show.therm;
+      placeLabels();
+      labels.forEach(function(l){ l.visible = show.text; });
+      if(show.text){
+        Ltc.visible = show.therm; Lkel.visible = show.therm && Math.abs(S.kelvin) > 0.15;
+        Lwwb.visible = show.wind && S.wwb > 0.15; Lwind.visible = Lup.visible = show.wind; Lrain.visible = show.cloud;
+      }
+      renderer.render(scene, camera);
+    });
+  })();
+
+  /* ---------- world map of typical impacts (Pacific-centred, lon -20..340, lat 80..-70) ---------- */
+  var LAND = [
+  '-5.5,36 -9,37 -9,43 -1.5,43.5 -1.5,46 -4.5,48.5 -1.5,49.5 1.5,50.5 4,52 7,53.5 8.5,55 8.3,57 10.5,57.7 12,54.2 19,54.5 21,55 21,57 24,57.2 24.5,59.4 30,60 22,60.5 21.5,63 25,65 22,65.8 18,62.5 19.5,60.5 16.5,57 13,55.5 11,58.2 8,58 5.5,59 5,62 10,64 14,67.5 19,70 26,71 31,70.3 33,69.3 41,67 36,66 40,64.5 44,66.2 44,68.5 53,68.5 60,69 68,69 70,73 80,73.5 87,75 100,77 105,77.5 113,74 128,73 140,72.5 150,71 160,69.5 170,70 180,69 180,65 173,61.5 164,59.5 163,56 156.5,51 155.5,56.5 160,61 155,59.5 142,59 135,55 141,53 140,48 135,43 131,42.5 129,40 128,35 126,35 126.5,37.5 125,39.5 122,40 121.5,39 118,38.5 119,37 122.5,37 120.5,36 119.5,34.5 122,31 121.5,28 120,26 117,23.5 114,22 110.5,21 108,21.5 106.5,19 109,15 109.2,11.5 106,9 105,8.7 104.5,10.5 100.5,13.5 100,8 103.5,1.5 101,3 98.5,8 98.5,13 97.5,16.5 94.5,16 94,19.5 92,21 90,22 87,21.5 85,19.5 81,16 80,13 79.5,10 77.5,8 76,10.5 73,17.5 72.8,21 70,21 67,24.5 62,25 57,25.5 56.5,27 51,28 50,30 48.5,29.5 48,30 50,26.5 51.5,24.5 54,24 56,26 56.5,24.5 59.5,22.5 57.5,19 55,17 52,16 45,12.8 43,13 42.5,16 39,21.5 35,28 34.9,29.5 34.3,31 35.2,32.7 35.8,34.5 36,36.6 34,36.2 32,36.3 30,36.3 27.5,36.7 26.3,38.5 26.5,40 26,40.9 23.5,40.5 23.8,38 23,36.5 21.5,36.7 21,38.5 19.5,40.3 19.3,42 16.5,43.5 14,45.2 13.7,45.6 12.3,45.3 12.3,44 14,42 16,41.5 18.5,40.2 17,39.3 16.5,38.2 15.7,38 15.8,40 14,40.8 12.5,41.5 10.5,43 9,44.3 7,43.7 4,43.4 3,42.5 3,41.5 0.5,40.5 -0.5,38.5 -2,36.8',
+  '-5.5,35.8 -2,35.2 3,36.8 10,37.3 11,35 10,33.5 15,32.3 20,32.2 20,30.5 24,32 29,30.8 32.3,31.3 32.5,30 34,27 37,21 38.5,18 40,15.5 43,12.7 44.5,10.5 51,11.8 51,10.4 48,5 44,1 41,-2 39.5,-5 39,-8 40.5,-11 40.5,-15 37,-18 35,-20 35.3,-23.5 32.5,-25.8 32.8,-28 30,-31 27,-33.5 22,-34.2 18.5,-34.2 17.8,-31 15.2,-27 14.5,-22.5 11.8,-17.2 13.5,-12 12.2,-6 9,-1 9.5,3.5 8.5,4.5 5,6 1,6 -2,4.8 -5,5.2 -8,4.5 -11,6.5 -13.5,9.5 -15,11 -17.2,14.7 -16.5,19 -16,21 -13,27.5 -10,29.5 -9.5,32 -6.5,34',
+  '-168,65.5 -162,70.5 -156.5,71.3 -141,69.7 -128,70 -115,68.5 -108,68 -96,68.5 -95,71.5 -88,68.2 -82,69.5 -81.5,66 -87,64 -93,61.5 -94.5,58.8 -92.5,57 -88,56.5 -82.5,55 -82,52.5 -79.5,51.5 -79,54.5 -77.5,60 -78,62.3 -72,61.8 -69.5,60.2 -65,60 -61.5,56.2 -58,54 -56,51.5 -59,50.2 -66,50.2 -70.5,47.5 -65,49 -64.3,46.5 -61,45.5 -65,43.7 -67,44.8 -70,43.7 -70.5,41.8 -74,40.4 -75.5,38.5 -76,36.8 -75.5,35.2 -78.5,33.8 -81,31.6 -81,29.5 -80,26.7 -80.5,25.2 -82,26.5 -82.8,28.5 -84,30 -86.5,30.3 -89,30.2 -89.5,29 -92,29.5 -94.5,29.3 -97.2,27.8 -97.5,25 -97.8,22 -96.5,19 -94.5,18.2 -91.5,18.5 -90.5,21 -87,21.5 -87.5,18 -88.5,15.8 -84,15.8 -83.2,13 -83.7,10.8 -82,9 -79.5,9.5 -77.8,8.2 -80,7.3 -83,8.3 -85.7,10 -87.5,13 -91.5,14 -94.5,16 -97,15.8 -101,17.3 -105.5,20 -105.7,22.5 -109,25.5 -112.5,29.5 -114.7,31.7 -113,29.5 -111,26 -109.7,23.2 -110.5,23 -112.3,24.6 -114.2,27.5 -115.8,29.8 -117,32.5 -118.5,34 -121,35 -122.5,37.5 -124,40.5 -124,46.5 -123,48.3 -125,50 -130,54.5 -133,57 -137,58.8 -141,60 -146,60.8 -151,59.5 -153,57.5 -158,56.5 -162,55 -164.5,54.5 -158,58.5 -161.5,59.5 -162,63 -165,62 -166,64.5',
+  '-77.4,8.5 -76,9.3 -74,11 -71.5,12 -71.5,10.5 -68,10.5 -64,10.6 -61,10.5 -60,8.4 -57,6 -54,5.8 -51.5,4.2 -50,1.5 -48,-0.5 -44.5,-2.5 -40,-2.8 -35,-5.2 -34.8,-8 -37,-11.5 -39,-14 -39,-18 -41,-22 -44.5,-23 -48.5,-26 -48.7,-28.5 -52,-32 -53.5,-34 -57,-34.8 -58.5,-34.3 -57.2,-36 -56.7,-38.2 -62,-39 -62.3,-41 -65,-41 -64.3,-42.8 -65.5,-45 -67.5,-46.5 -66,-48 -69,-51.5 -68.5,-52.5 -65.5,-54.8 -68.5,-55.2 -72,-53.8 -75,-50 -74,-45 -73.7,-40 -73.3,-37 -71.7,-32 -71.5,-28 -70.3,-22.5 -70.3,-18.3 -75,-15.5 -76.5,-13.5 -79,-8 -81,-5.5 -80.2,-3 -80.5,-1 -79.8,1.5 -78.5,2.5 -77.5,5 -77.3,7.5',
+  '114,-22 114,-26 115,-34 118,-35 123.5,-34 129,-31.5 135,-34.5 138,-34 140,-38 144,-38.5 147,-38 150,-37 153,-31 153.5,-26 151,-23 146,-19 145.3,-15 143.5,-14 142.5,-10.8 141.5,-13 140.5,-17.5 137,-15.5 136,-12 132.5,-11.5 130,-12.5 126.5,-14 122.5,-17 121,-19.5 118,-20',
+  '145,-41 148,-41 147,-43.5 145.5,-43',
+  '173,-35 175,-37 178,-37.8 176,-41 174.5,-39.5',
+  '172.5,-40.5 174,-41.5 171,-44.5 169,-46.5 166.5,-46 168,-44 171.5,-41.5',
+  '-73,78 -60,82 -30,83.5 -20,81.5 -18,77 -20,74 -22,70 -27,68.5 -35,66 -41,63 -44,60 -48,61 -51,64 -54,67 -55,70 -60,76 -68,76.5',
+  '-24,65.5 -22,66.4 -15,66.3 -13.5,65 -18,63.5 -22,63.8',
+  '-5,50 1.5,51 1.7,52.8 -0.5,54 -1.8,55.5 -2,57.6 -3.5,58.6 -5,58.6 -6,56.5 -4.8,55 -3,54.5 -3.2,53.4 -4.5,53.2 -4.2,51.8 -3,51.4',
+  '-10,52 -6,52.2 -6,54.2 -8.5,55 -10,54',
+  '52,71 56,75 68,76.8 60,74 55,71.5',
+  '-80,73.5 -72,71.5 -62,66.5 -65,62.5 -72,63.5 -78,64.5 -74,68 -90,70',
+  '-118,72 -105,73 -101,70 -112,69',
+  '-90,76.5 -75,78 -62,82 -80,83 -92,81',
+  '-59.3,47.6 -56,51.6 -53,47 -55,46.8',
+  '131,34 135,35.5 140,38 141.8,41 141,38 140.8,36 139.8,35 137,34.5 135,33.5 133,34',
+  '140,42 141.5,45.4 145.5,43.3 143,42 141,42.5',
+  '130,33.5 131.8,33.5 131.5,31.2 130.2,31',
+  '120,18.5 122.2,18.4 122,14.2 124,13 121.5,13.5 120.5,14.5',
+  '122,7 125.5,9.5 126.5,7 125.5,5.8 122.5,7',
+  '95.3,5.6 98,4 104,-1 106,-3 105.8,-5.8 102,-4 98,0.5 95.5,2.7',
+  '109,1.5 111,2 113,3.2 117,7 119,5 118,1 116,-3.8 113,-3.5 110,-2.8 109,-0.5',
+  '105.2,-6.8 108,-6.5 112,-6.8 114.5,-7.8 110,-8.2 106,-7.4',
+  '119,-5 121,-1 123,1 125,1.5 122,-1 123,-4.5',
+  '131,-1 135,-3.3 138,-1.8 143,-3.3 147,-6 150,-10.5 147,-10 143.5,-8.5 141,-9.2 138,-8 137.8,-5 134,-3.5 132.5,-4.5',
+  '44,-25 47,-25 49.5,-17 50.5,-15.5 49.5,-12 48,-13.5 44,-16.5 43.5,-21',
+  '-85,22 -82,23 -78,22.4 -74.2,20.2 -77.5,19.8 -81,22',
+  '80,9.8 81.8,7.5 81,6 80,6.5'
+  ];
+  var TYPE = { wet: ['#3f8fb5', '偏湿'], dry: ['#c98a3a', '偏干'], warm: ['#d4402a', '偏暖'], cool: ['#5b6fb8', '偏冷'], other: ['#8a8c82', '其他'] };
+  // [short name, full name, lon, lat, rx, ry, type, text]
+  var R = {
+    en_djf: [
+      ['印尼', '印尼、菲律宾、澳大利亚北部', 125, -3, 22, 14, 'dry', '降雨偏少，容易干旱和山火。上升气流东移后，这里改为下沉。'],
+      ['赤道太平洋', '赤道太平洋中东部', -150, 0, 45, 7, 'wet', '暖水上方对流旺盛，原本少雨的海域下大雨。'],
+      ['秘鲁', '秘鲁、厄瓜多尔沿岸', -79, -4, 5, 8, 'wet', '沿岸海水变暖，强事件常带来暴雨和洪水；冷水上翻减弱，鳀鱼渔获减少。'],
+      ['美国南部', '美国南部、墨西哥北部', -100, 30, 20, 6, 'wet', '太平洋急流南移，冬季偏湿、风暴偏多。'],
+      ['加拿大', '加拿大、美国北部', -105, 53, 30, 8, 'warm', '冬季偏暖。'],
+      ['南美北部', '巴西北部、委内瑞拉、哥伦比亚', -60, 2, 16, 8, 'dry', '雨季降雨偏少。'],
+      ['巴西南部', '巴西南部、乌拉圭、阿根廷东北', -55, -30, 9, 6, 'wet', '降雨偏多。'],
+      ['非洲东南部', '非洲东南部', 32, -20, 10, 8, 'dry', '雨季（约 11 月到次年 3 月）偏干。'],
+      ['东非', '赤道东非（肯尼亚、坦桑尼亚北部）', 39, -1, 6, 6, 'wet', '短雨季（约 10 到 12 月）偏多。'],
+      ['华南', '中国南方', 113, 25, 9, 5, 'wet', '冬季到次年春季降水常偏多：菲律宾以东出现一个反气旋，把南海的水汽送到华南。'],
+      ['西日本', '日本西部', 132, 33.5, 5, 3, 'warm', '冬季气温常为正常或偏高。北海道等北日本没有统计上显著的倾向（日本气象厅）。']
+    ],
+    en_jja: [
+      ['印度', '印度', 79, 21, 10, 9, 'dry', '夏季风降雨常偏少。'],
+      ['印尼', '印尼', 115, -3, 15, 6, 'dry', '7 到 10 月偏干，常伴随森林火灾和烟霾。'],
+      ['澳大利亚东部', '澳大利亚东部', 145, -28, 10, 10, 'dry', '南半球冬春偏干。'],
+      ['中美洲', '中美洲、加勒比', -85, 14, 11, 6, 'dry', '雨季降雨偏少。'],
+      ['智利中部', '智利中部', -71, -34, 3, 5, 'wet', '南半球冬季降雨偏多。'],
+      ['赤道太平洋', '赤道太平洋中东部', -150, 0, 45, 7, 'wet', '暖水上方对流旺盛。'],
+      ['大西洋', '热带大西洋', -50, 15, 14, 7, 'other', '高空风切变增强，大西洋飓风常偏少。'],
+      ['长江', '长江流域', 112, 30, 9, 3.5, 'wet', '常见的是厄尔尼诺「之后」那个夏天多雨，例如 1998 和 2016 年；事件正在发展的夏天不一定。'],
+      ['日本', '日本', 135, 35, 7, 5, 'cool', '夏季西日本气温常偏低（日本气象厅）。']
+    ],
+    ln_djf: [
+      ['印尼 · 澳大利亚', '印尼、澳大利亚北部和东部', 130, -12, 24, 14, 'wet', '降雨偏多，容易洪水，例如 2010 到 2011 年的昆士兰洪水。'],
+      ['赤道太平洋', '赤道太平洋中部', -170, 0, 35, 7, 'dry', '冷水上空对流受抑制，比平常更干。'],
+      ['美国南部', '美国南部、墨西哥北部', -100, 30, 20, 6, 'dry', '冬季偏干偏暖。'],
+      ['加拿大西部', '加拿大西部、美国西北部', -118, 53, 14, 7, 'cool', '冬季偏冷。'],
+      ['南美北部', '巴西北部、委内瑞拉、哥伦比亚', -60, 2, 16, 8, 'wet', '降雨偏多。'],
+      ['巴西南部', '巴西南部、乌拉圭、阿根廷东北', -56, -30, 9, 6, 'dry', '降雨偏少。'],
+      ['非洲东南部', '非洲东南部', 32, -20, 10, 8, 'wet', '雨季偏湿。'],
+      ['东非', '赤道东非', 39, -1, 6, 6, 'dry', '短雨季（约 10 到 12 月）偏少。2020 到 2023 年东非之角的大旱就发生在连续三年的拉尼娜里。'],
+      ['中国', '中国', 115, 37, 12, 7, 'cool', '冬季常偏冷、冷空气活动多。这是常见说法，相关性不算强。'],
+      ['日本', '日本', 138, 37, 6, 5, 'other', '冬季没有统计上显著的倾向（日本气象厅）。']
+    ],
+    ln_jja: [
+      ['印度', '印度', 79, 21, 10, 9, 'wet', '夏季风降雨常偏多。'],
+      ['印尼', '印尼', 115, -3, 15, 6, 'wet', '降雨偏多。'],
+      ['澳大利亚东部', '澳大利亚东部', 145, -28, 10, 10, 'wet', '南半球冬春偏湿。'],
+      ['中美洲', '中美洲、加勒比', -85, 14, 11, 6, 'wet', '雨季降雨偏多。'],
+      ['赤道太平洋', '赤道太平洋中部', -170, 0, 35, 7, 'dry', '冷水上空比平常更干。'],
+      ['大西洋', '热带大西洋', -50, 15, 14, 7, 'other', '风切变减弱，大西洋飓风常偏多。'],
+      ['北日本', '北日本', 142, 42, 4, 4, 'warm', '夏季气温常偏高（日本气象厅）。']
+    ]
+  };
+
+  var W0 = -20, LAT0 = 80, LAT1 = -70, mapCv = $('map'), mctx = mapCv.getContext('2d');
+  var MP = { season: 'djf', sel: -1, key: '', W: 0, H: 0 };
+  function mlon(l){ return l < W0 ? l + 360 : l; }
+  function mx(l){ return (mlon(l) - W0)/360*MP.W; }
+  function my(a){ return (LAT0 - a)/(LAT0 - LAT1)*MP.H; }
+  function mapSet(){ var n = S.n; return n >= 0.5 ? 'en_' + MP.season : n <= -0.5 ? 'ln_' + MP.season : null; }
+  function drawMap(force){
+    var set = mapSet(), k = set ? clamp((Math.abs(S.n) - 0.5)/1.5, 0, 1) : 0;
+    var key = [set, k.toFixed(2), MP.sel, MP.W].join();
+    if(key === MP.key && !force) return; MP.key = key;
+    var c = mctx, W = MP.W, H = MP.H; if(!W) return;
+    c.clearRect(0, 0, W, H);
+    c.lineJoin = 'round'; c.fillStyle = '#d9d6cb'; c.strokeStyle = 'rgba(29,30,27,.55)'; c.lineWidth = 0.8;
+    LAND.forEach(function(str){
+      var p = str.split(' ').map(function(q){ q = q.split(','); return [+q[0], +q[1]]; });
+      // shift whole polygons so they don't straddle the map seam at 20°W
+      var mid = p.reduce(function(s, q){ return s + q[0]; }, 0)/p.length, off = mid < W0 ? 360 : 0;
+      [off, off - 360, off + 360].forEach(function(o){
+        c.beginPath(); p.forEach(function(q, i){ var x = (q[0] + o - W0)/360*W, y = my(q[1]); i ? c.lineTo(x, y) : c.moveTo(x, y); });
+        c.closePath(); c.fill(); c.stroke();
+      });
+    });
+    c.setLineDash([4, 4]); c.strokeStyle = 'rgba(29,30,27,.35)'; c.beginPath(); c.moveTo(0, my(0)); c.lineTo(W, my(0)); c.stroke();
+    c.setLineDash([3, 3]); c.strokeStyle = '#1d1e1b'; c.strokeRect(mx(-170), my(5), mx(-120) - mx(-170), my(-5) - my(5)); c.setLineDash([]);
+    var fs = Math.max(10, Math.round(W/85));
+    c.font = '600 ' + fs + 'px ' + '"Noto Sans SC","PingFang SC",sans-serif'; c.fillStyle = '#1d1e1b'; c.textAlign = 'left';
+    c.fillText('Niño 3.4', mx(-170), my(5) - 4);
+    var list = set ? R[set] : [];
+    list.forEach(function(r, i){
+      var col = TYPE[r[6]][0], x = mx(r[2]), y = my(r[3]), rx = r[4]/360*W, ry = r[5]/(LAT0-LAT1)*H;
+      c.save(); c.globalAlpha = 0.3 + 0.45*k; c.fillStyle = col; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, 7); c.fill(); c.restore();
+      c.strokeStyle = i === MP.sel ? '#1d1e1b' : col; c.lineWidth = i === MP.sel ? 2.2 : 1.2;
+      c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, 7); c.stroke();
+    });
+    c.textAlign = 'center'; c.lineWidth = 3; c.strokeStyle = 'rgba(239,238,233,.9)';
+    list.forEach(function(r){ var x = mx(r[2]), y = my(r[3]) + fs*0.35; c.strokeText(r[0], x, y); c.fillText(r[0], x, y); });
+    if(!set){ c.font = '700 ' + Math.round(fs*1.3) + 'px "Noto Sans SC",sans-serif'; c.strokeText('中性：没有固定的偏向', W/2, H*0.9); c.fillText('中性：没有固定的偏向', W/2, H*0.9); }
+    listRegions(set, list);
+  }
+  var lastListKey = '';
+  function listRegions(set, list){
+    var key = set + '|' + MP.sel;
+    if(key === lastListKey) return; lastListKey = key;
+    var box = $('regList'); box.innerHTML = '';
+    if(!set){
+      $('wTitle').innerHTML = '<small>Tendency</small>中性';
+      $('wDetail').textContent = '指数在 ±0.5 °C 之间时，没有固定的偏向。把上面的滑杆拖到厄尔尼诺或拉尼娜试试。';
+      return;
+    }
+    var en = set.indexOf('en') === 0;
+    $('wTitle').innerHTML = '<small>Tendency · ' + (MP.season === 'djf' ? 'Dec–Feb' : 'Jun–Aug') + '</small>' + (en ? '厄尔尼诺' : '拉尼娜') + '时的倾向';
+    $('wDetail').textContent = MP.sel >= 0 ? list[MP.sel][1] + '：' + TYPE[list[MP.sel][6]][1] + '。' + list[MP.sel][7] : '点一个色块或条目看说明。';
+    list.forEach(function(r, i){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'reg'; b.style.setProperty('--c', TYPE[r[6]][0]);
+      b.setAttribute('aria-pressed', i === MP.sel ? 'true' : 'false');
+      b.innerHTML = '<b>' + r[1] + '</b> <span>' + TYPE[r[6]][1] + '</span>';
+      b.addEventListener('click', function(){ MP.sel = MP.sel === i ? -1 : i; drawMap(true); });
+      box.appendChild(b);
+    });
+  }
+  function sizeMap(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), W = mapCv.clientWidth, H = mapCv.clientHeight;
+    mapCv.width = Math.round(W*dpr); mapCv.height = Math.round(H*dpr); mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    MP.W = W; MP.H = H; drawMap(true);
+  }
+  mapCv.addEventListener('click', function(ev){
+    var set = mapSet(); if(!set) return;
+    var b = mapCv.getBoundingClientRect(), px = ev.clientX - b.left, py = ev.clientY - b.top, hit = -1, best = 2;
+    R[set].forEach(function(r, i){
+      var dx = (px - mx(r[2]))/(r[4]/360*MP.W), dy = (py - my(r[3]))/(r[5]/(LAT0-LAT1)*MP.H), d = dx*dx + dy*dy;
+      if(d < 1 && d < best){ best = d; hit = i; }
+    });
+    MP.sel = hit; drawMap(true);
+  });
+  var seasonBtns = document.querySelectorAll('[data-s]');
+  [].forEach.call(seasonBtns, function(b){
+    b.addEventListener('click', function(){
+      MP.season = b.getAttribute('data-s'); MP.sel = -1; lastListKey = '';
+      [].forEach.call(seasonBtns, function(o){ o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+      drawMap(true);
+    });
+  });
+  var lastSet = null;
+  hooks.map = function(){ var s = mapSet(); if(s !== lastSet){ lastSet = s; MP.sel = -1; } drawMap(false); };
+  sizeMap();
+  if(window.ResizeObserver) new ResizeObserver(sizeMap).observe(mapCv); else window.addEventListener('resize', sizeMap);
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function frame(now){
+    var dt = Math.min(0.1, (now - last)/1000); last = now;
+    tickCycle(dt, now);
+    frameHooks.forEach(function(f){ f(dt); });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

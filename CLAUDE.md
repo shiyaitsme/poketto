@@ -56,6 +56,11 @@ worker.js       静态资源 + 时间线 KV 接口
 - GLSL 变量名不能以 `gl_` 开头。
 - 本地打开 WebGL 页面请用静态服务器，不要双击文件。
 
+### 本地无头浏览器（MCP 卡住时）
+
+- Playwright MCP 跑 WebGL 页面可能整个卡死（2026-11-24 做 `enso.html` 时连 `browser_close` 都超时）。替代做法：在仓库外的目录 `npm i playwright-core`，再用 `node node_modules/playwright-core/cli.js install chromium-headless-shell`（设 `PLAYWRIGHT_BROWSERS_PATH`），用 `page.route` 把本地文件喂给假域名。
+- 无头软件渲染下 `assets/poketto.js` 的笔刷绘制非常慢（页面掉到每秒不到 1 帧），测交互和截图时把它路由成 404；它只影响装饰，不影响工具本身。
+
 ### 用 Playwright MCP 验证艺术版
 
 - 工具环境里没有 `require`、`process`，也不能访问 `file:` 和沙盒的本地端口。做法：用 Python 把页面 HTML 以 JSON 字符串嵌进一个 `.js` 代码文件，放到截图目录，再用 `browser_run_code_unsafe` 的 `filename` 参数运行，里面用 `page.route` 把一个假域名的请求回给 HTML。
