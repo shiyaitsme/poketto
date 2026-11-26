@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>同一阵风，隔一座山 · Poketto</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/poketto.css">
+<style>
+  /* tool-specific layout; look comes from poketto.css */
+  .pk-page { max-width: 1120px; }
+  .stage { position: relative; padding: 0; overflow: hidden; touch-action: none; --l: 18px; height: clamp(260px, 38vh, 400px); }
+  .stage canvas { position: relative; z-index: 1; display: block; }
+  .badge { position: absolute; z-index: 2; top: 14px; left: 18px; pointer-events: none; padding: 1px 7px; background: var(--veil); }
+  .badge small { margin-left: 8px; font-family: var(--body); font-weight: 500; letter-spacing: .04em; color: var(--ink-2); text-transform: none; }
+  .hint { position: absolute; z-index: 2; bottom: 12px; right: 18px; pointer-events: none; color: var(--ink-2); }
+  .schematic { position: absolute; z-index: 2; bottom: 12px; left: 18px; pointer-events: none; color: var(--ink-2); }
+  .nogl[hidden] { display: none; }
+  .nogl { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--ink-2); }
+  .bench { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  .bench-ctrl { display: grid; gap: 16px; min-width: 0; }
+  .bench-view { position: static; }
+  .bench-view .stage { background-color: var(--paper); }
+  .prof { position: relative; padding: 0; overflow: hidden; --l: 14px; height: 280px; margin-top: 12px; }
+  .prof canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .legend { margin: 10px 0 0; font-size: 13px; }
+  .panel { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .row.between { justify-content: space-between; }
+  .lab { font-size: 13px; color: var(--ink-2); margin: 0; }
+  .lab strong { color: var(--ink); font-weight: 700; }
+  .ends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+  .layers { display: grid; gap: 8px; }
+  .layer { appearance: none; border: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; display: grid; grid-template-columns: 22px 1fr; gap: 2px 10px; padding: 10px 14px; --l: 12px; }
+  .layer:hover { background-color: rgba(185,224,76,.2); }
+  .layer:focus-visible { outline: 2px solid var(--leaf); outline-offset: 3px; }
+  .layer[disabled] { cursor: default; }
+  .layer[disabled]:hover { background-color: transparent; }
+  .layer .dot { grid-row: span 2; width: 13px; height: 13px; margin-top: 5px; border-radius: 50%; border: 1.5px solid var(--ink); }
+  .layer[aria-pressed="true"] .dot { background: var(--ink); }
+  .layer b { font-weight: 900; font-size: 15.5px; }
+  .layer span { font-size: 12.5px; color: var(--ink-2); }
+  .layer[aria-pressed="false"] b { color: var(--ink-2); }
+  .st { display: grid; grid-template-columns: 1fr auto auto auto; gap: 3px 14px; font-size: 13px; align-items: baseline; }
+  .st .h { font-family: var(--label); font-weight: 650; font-size: 11px; text-transform: uppercase; color: var(--ink-2); }
+  .st i { font-style: normal; font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .st b { font-weight: 700; }
+  .big { font-weight: 900; font-size: clamp(22px, 2.8vw, 30px); line-height: 1.25; }
+  .bars { display: grid; gap: 8px; }
+  .bar { display: grid; grid-template-columns: 92px 1fr 70px; gap: 10px; align-items: center; font-size: 12.5px; }
+  .bar .tr { height: 12px; border: 1px solid var(--ink); position: relative; }
+  .bar .tr i { position: absolute; left: 0; top: 0; bottom: 0; background: #3f8fb5; transition: width .3s ease; }
+  .bar .tr i.snow { background: repeating-linear-gradient(135deg, #9fc3d8 0 4px, #e9f2f6 4px 8px); }
+  .bar em { font-style: normal; font-family: var(--mono); text-align: right; }
+  .bar.cur span { font-weight: 700; }
+  .notes { display: grid; gap: 12px; max-width: 720px; }
+  .notes a { color: inherit; }
+  @media (min-width: 900px) {
+    .bench { grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr); gap: 26px; }
+    .bench-view { position: sticky; top: 16px; z-index: 20; }
+    .bench-view .stage { height: min(470px, calc(100vh - 330px)); min-height: 330px; background-color: var(--veil); }
+  }
+</style>
+<script src="../assets/poketto.js" defer></script>
+<script src="../assets/related.js" defer></script></head>
+<body>
+<main class="pk-page">
+  <div class="pk-bar">
+    <a class="pk-home" href="../index.html" data-pk-wordmark title="回到 Poketto 首页"></a>
+    <div class="pk-label"><a href="../index.html" class="pk-zh">口袋工具箱</a> / Rain shadow &middot; <span class="pk-zh">地理</span></div>
+  </div>
+
+  <header class="pk-head">
+    <div class="pk-kicker">
+      <span class="pk-label">Tool No.12</span>
+      <span class="pk-label">Layers &middot; Sea &middot; Mountain</span>
+    </div>
+    <h1 class="pk-title">同一阵风，<br>隔一座山</h1>
+    <svg class="pk-star" viewBox="0 0 40 80" aria-hidden="true"><path d="M20 0 C21.2 26 22.5 33 40 38 C22.5 43 21.2 52 20 80 C18.8 52 17.5 43 0 38 C17.5 33 18.8 26 20 0Z"/></svg>
+    <div class="pk-br pk-lead">
+      <p class="pk-verse">一个地方的天气，是好几层尺度叠出来的。<br>先只看全球那一层，再加上一片海，再加上一座山，<br>看同一团空气一路走过去，雪和雨落在了哪一边。</p>
+    </div>
+  </header>
+
+  <div class="bench">
+    <div class="bench-view">
+      <section class="stage pk-br pk-veil" id="stage" aria-label="可拖动旋转的 3D 地形带，风从左往右吹">
+        <div class="badge pk-label" id="badge"></div>
+        <div class="schematic pk-label">示意图 · 高度放大了几十倍</div>
+        <div class="hint pk-label">拖动旋转 / Drag</div>
+        <div class="nogl" id="nogl" hidden>这个环境打不开 3D 画面。下面的剖面图和读数仍然可用。</div>
+      </section>
+      <section class="prof pk-br pk-veil" aria-label="空气团一路的高度、气温和降水">
+        <canvas id="prof" role="img" aria-label="剖面图：上面是地形、空气团和云，中间是气温和露点，下面是降水"></canvas>
+      </section>
+      <p class="legend pk-note">剖面图从上到下：地形和云（灰色）；空气团的<span style="color:#d4402a;font-weight:700">气温</span>和<span style="color:#2b6ea8;font-weight:700">露点</span>，两条线碰到一起就是饱和、开始成云；最下面是每个地方的降水，<span style="color:#3f8fb5;font-weight:700">蓝色</span>是雨，<span style="color:#7fa6bd;font-weight:700">浅色斜纹</span>是雪。</p>
+    </div>
+
+    <div class="bench-ctrl">
+      <section class="panel pk-br pk-veil" aria-label="场景">
+        <div class="pk-h2"><small>Scene</small>选一个地方</div>
+        <div class="row" id="presets" role="group" aria-label="预设场景">
+          <button class="pk-chip zh" type="button" data-p="hokkaido" aria-pressed="true">北海道的冬天</button>
+          <button class="pk-chip zh" type="button" data-p="himalaya" aria-pressed="false">印度夏季风与喜马拉雅</button>
+          <button class="pk-chip zh" type="button" data-p="alps" aria-pressed="false">阿尔卑斯的焚风</button>
+        </div>
+        <p class="lab" id="sceneText"></p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="尺度的三层">
+        <div class="row between">
+          <div class="pk-h2"><small>Layers</small>一层一层叠上去</div>
+          <button class="pk-chip zh" type="button" id="stack">从第一层开始放</button>
+        </div>
+        <div class="layers">
+          <button class="layer pk-br" type="button" id="L1" aria-pressed="true" disabled><i class="dot"></i><b>1 · 全球：纬度和季节</b><span>决定空气出发时有多冷、多湿。这一层一直开着。</span></button>
+          <button class="layer pk-br" type="button" id="L2" aria-pressed="true"><i class="dot"></i><b>2 · 区域：经过一片海</b><span>海比空气暖时，从下面加热空气、送进水汽。</span></button>
+          <button class="layer pk-br" type="button" id="L3" aria-pressed="true"><i class="dot"></i><b>3 · 局地：撞上一座山</b><span>空气被迫爬坡，冷却成云，在迎风坡卸下雨雪。</span></button>
+        </div>
+        <p class="lab" id="stackText">关掉第 2 层，海就不和空气交换；关掉第 3 层，山就被抹平。</p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="结果">
+        <div class="pk-h2"><small>Result</small>空气一路上的变化</div>
+        <div class="big" id="headline"></div>
+        <div class="st" id="stations"></div>
+        <div class="bars" id="bars" aria-label="每一层给迎风侧带来多少降水"></div>
+        <p class="lab" id="foehn"></p>
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="调参数">
+        <div class="pk-h2"><small>Knobs</small>自己调</div>
+        <div class="row between"><span class="lab">纬度</span><span class="lab" id="latLab"></span></div>
+        <input class="pk-range" type="range" id="lat" min="0" max="70" step="1" value="43" aria-label="纬度，北纬">
+        <div class="row" id="seasons" role="group" aria-label="季节">
+          <button class="pk-chip zh" type="button" data-s="-1">冬</button>
+          <button class="pk-chip zh" type="button" data-s="0">春秋</button>
+          <button class="pk-chip zh" type="button" data-s="1">夏</button>
+        </div>
+        <div class="row between"><span class="lab">海面温度</span><span class="lab" id="sstLab"></span></div>
+        <input class="pk-range" type="range" id="sst" min="0" max="30" step="0.5" value="7" aria-label="海面温度，摄氏度">
+        <div class="row between"><span class="lab">空气在海上走多远</span><span class="lab" id="fetchLab"></span></div>
+        <input class="pk-range" type="range" id="fetch" min="0" max="900" step="10" value="600" aria-label="空气经过海面的距离，千米">
+        <div class="row between"><span class="lab">山的高度</span><span class="lab" id="hLab"></span></div>
+        <input class="pk-range" type="range" id="mh" min="0" max="6" step="0.1" value="1.6" aria-label="山的高度，千米">
+        <div class="row between"><span class="lab">山后面地面的海拔</span><span class="lab" id="leeLab"></span></div>
+        <input class="pk-range" type="range" id="lee" min="0" max="5" step="0.1" value="0.1" aria-label="背风侧地面海拔，千米">
+      </section>
+
+      <section class="panel pk-br pk-veil" aria-label="视角和显示">
+        <div class="pk-h2"><small>View</small>视角和显示</div>
+        <div class="row" id="views" role="group" aria-label="视角">
+          <button class="pk-chip zh" type="button" data-v="tilt" aria-pressed="true">斜着看</button>
+          <button class="pk-chip zh" type="button" data-v="side" aria-pressed="false">正侧面</button>
+        </div>
+        <div class="row">
+          <label class="pk-check"><input type="checkbox" id="tAir" checked>空气团</label>
+          <label class="pk-check"><input type="checkbox" id="tCloud" checked>云和雨雪</label>
+          <label class="pk-check"><input type="checkbox" id="tText" checked>文字</label>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="notes">
+    <div class="pk-h2"><small>How to read</small>三层各管什么</div>
+    <p class="pk-note"><b>第 1 层，全球：先定一个底色。</b>纬度和季节决定空气出发时的温度。温度又决定它最多能装多少水汽：气温每升高约 10 °C，饱和水汽量大约翻一倍。所以零下 15 °C 的西伯利亚冷空气再饱和也很干，30 °C 的热带空气天生就是一大桶水。</p>
+    <p class="pk-note"><b>第 2 层，区域：海从下面改造空气。</b>冷空气流过比它暖的海，被从下往上加热、送进水汽。下暖上冷的空气不稳定，会自己翻滚成积云。所以就算没有山，冬季风过海后在沿岸也会下阵雪，日本海沿岸就是这样。海面走得越远、海和空气温差越大，改造得越彻底。</p>
+    <p class="pk-note"><b>第 3 层，局地：山逼空气往上爬。</b>上升的空气会膨胀冷却。没饱和时每升高 1 km 降约 9.8 °C；一旦饱和、开始成云，水汽凝结放出热量，降温就慢下来，只有每千米约 5 到 6 °C。水在迎风坡凝结、落下，翻过山顶时空气已经干了。</p>
+    <p class="pk-note"><b>翻山以后：焚风和雨影。</b>下山时空气被压缩升温，全程按每千米约 9.8 °C 回暖。上山时一部分路程降温慢，下山时一路都按快的速度回暖，所以落到同一高度时，背风侧比迎风侧更暖、更干。这就是焚风；山后那片少雨的地方叫雨影区。</p>
+  </section>
+
+  <section class="notes">
+    <div class="pk-h2"><small>The model</small>关于这个模型</div>
+    <p class="pk-note">一团贴着地面的空气从左往右走，每 2 km 算一步。上升和下沉用真实的干绝热降温率，饱和后按凝结放热逐步修正，所以湿绝热降温率是算出来的，不是写死的。饱和水汽量用马格努斯公式，凝结出来的水七成立刻落下，剩下的留在云里，下山时再蒸发。</p>
+    <p class="pk-note">示意的部分：出发气温是按纬度和季节粗略估的；海面加热和增湿用简单的指数逼近；海上的对流阵雪用一个经验系数；降水换算成毫米时，假设了 1 km 厚的湿空气层、每秒 8 米的风，所以数字是「一个大降水日」的量级，不是年降水量，也不是天气预报。雪按 1 毫米水约 1 厘米雪估算。</p>
+    <p class="pk-note">没有放进来的：风向会随季节反转（真实的季风夏天和冬天方向相反，这里风永远从左吹向右）；山可以绕过去而不是翻过去；没算晴天夜里地面的辐射降温，所以北海道太平洋一侧在这里显得比札幌暖；实际上那边冬天晴朗、夜里很冷，带广的 1 月平均气温比札幌还低。城市热岛、阳坡阴坡、湖泊等更小的一层，以后可以再加。三个场景的地名只是指出大致位置，地形是简化成一座山。</p>
+  </section>
+
+  <footer class="pk-foot">
+    <a class="pk-back pk-label" href="../index.html">
+      <svg viewBox="0 0 34 10" aria-hidden="true"><path d="M34 5 H2 M7 1 L2 5 L7 9" fill="none" stroke="#1d1e1b" stroke-width="1.4"/></svg>
+      回到口袋 <span class="zh">/ Back to the pocket</span>
+    </a>
+    <span class="pk-label">Poketto &middot; Made with curiosity</span>
+  </footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function clamp(v, a, b){ return v < a ? a : v > b ? b : v; }
+  function sm(a, b, x){ var t = clamp((x-a)/(b-a), 0, 1); return t*t*(3-2*t); }
+
+  /* ---------- thermodynamics (T in °C, q in g/kg, z in km) ---------- */
+  var LC = 2.49;                                                     // latent heating: K per g/kg condensed (L/cp)
+  function pres(z){ return 1013.25*Math.exp(-z/8.4); }               // hPa
+  function es(T){ return 6.112*Math.exp(17.67*T/(T+243.5)); }        // Magnus, hPa
+  function qs(T, z){ var e = es(T), p = pres(z); return 622*e/(p - 0.378*e); }
+  function dqs(T, z){ return qs(T, z)*17.67*243.5/Math.pow(T+243.5, 2); }
+  function dew(q, z){ var e = q*pres(z)/(622 + 0.378*q), l = Math.log(e/6.112); return 243.5*l/(17.67 - l); }
+  function rh(T, q, z){ var e = q*pres(z)/(622 + 0.378*q); return clamp(e/es(T), 0, 1); }
+  // move a parcel by dz km; returns condensed water (g/kg). P = {T, q, c} where c is cloud water kept in the parcel
+  function move(P, z, dz){
+    var n = Math.max(1, Math.ceil(Math.abs(dz)/0.05)), h = dz/n, made = 0;
+    for(var i = 0; i < n; i++){
+      P.T -= 9.8*h; z += h;
+      var s = qs(P.T, z), d;
+      if(P.q > s){ d = (P.q - s)/(1 + LC*dqs(P.T, z)); P.q -= d; P.T += LC*d; made += d; }
+      else if(P.c > 0){ d = Math.min(P.c, (s - P.q)/(1 + LC*dqs(P.T, z))); P.q += d; P.c -= d; P.T -= LC*d; }
+    }
+    return made;
+  }
+
+  /* ---------- layer 1: starting air from latitude and season ---------- */
+  function baseAir(lat, season){
+    var s = Math.sin(lat*Math.PI/180), tm = 27 - 48*Math.pow(s, 2.5), amp = 0.55*lat;
+    return { T: tm + (season < 0 ? -amp : season > 0 ? 0.5*amp : 0), RH: 0.6 };
+  }
+
+  /* ---------- scenes ---------- */
+  var SCENES = {
+    hokkaido: { lat: 43, season: -1, sst: 8, F: 600, H: 1.6, lee: 0.1, srcSea: false,
+      src: '大陆（俄罗斯远东）', sea: '日本海', wind: '日本海一侧：札幌、岩见泽', leeN: '太平洋一侧：如带广',
+      text: '1 月，冬季风把西伯利亚的冷空气吹出大陆，横穿日本海，再撞上北海道中部的山（这里简化成一座约 1.6 km 的山）。' },
+    himalaya: { lat: 25, season: 1, sst: 29, F: 800, H: 6, lee: 3.7, srcSea: true,
+      src: '印度洋', sea: '孟加拉湾', wind: '喜马拉雅南麓', leeN: '青藏高原：如拉萨',
+      text: '6 到 9 月，湿热的季风从印度洋经孟加拉湾吹来，撞上 5 到 6 km 以上的喜马拉雅。山后的青藏高原本身就在海拔 3.5 km 以上。' },
+    alps: { lat: 46, season: 0, sst: 19, F: 300, H: 3, lee: 0.5, srcSea: false,
+      src: '上游的陆地', sea: '地中海', wind: '南坡：意大利、提契诺', leeN: '北侧山谷：瑞士、奥地利',
+      text: '春秋常有南风：地中海上空的湿空气向北撞上阿尔卑斯，南坡下大雨，北边的山谷吹起又暖又干的焚风。' }
+  };
+  var C = {}, layers = { L2: true, L3: true }, sceneKey = 'hokkaido';
+  function loadScene(k){
+    sceneKey = k; var s = SCENES[k];
+    for(var p in s) C[p] = s[p];
+    $('lat').value = C.lat; $('sst').value = C.sst; $('fetch').value = C.F; $('mh').value = C.H; $('lee').value = C.lee;
+    $('sceneText').textContent = C.text;
+    [].forEach.call(document.querySelectorAll('[data-p]'), function(b){ b.setAttribute('aria-pressed', b.getAttribute('data-p') === k ? 'true' : 'false'); });
+  }
+
+  /* ---------- run one parcel along the strip ----------
+     segments (km): source land 250, sea F, windward plain 40, up 50, down 50, leeward 100, tail 60 */
+  var DX = 2, EFF = 0.7, KP = 9600*86400/1000/(DX*1000);            // g/kg removed in one 2 km step -> mm per day
+  function terrain(c, L2, L3){
+    var H = L3 ? c.H : 0.05, lee = L3 ? Math.min(c.lee, Math.max(0.05, H - 0.2)) : 0.05, out = [];
+    var segs = [['src', 250], ['sea', c.F], ['plain', 40], ['up', 50], ['down', 50], ['lee', 100], ['tail', 60]], x = 0;
+    segs.forEach(function(sg){
+      for(var d = 0; d < sg[1]; d += DX){
+        var u = d/sg[1], g, sea = false;
+        switch(sg[0]){
+          case 'src': g = c.srcSea ? 0 : 0.1; sea = c.srcSea; break;
+          case 'sea': g = 0; sea = true; break;
+          case 'plain': g = 0.05 + 0.1*u*(H > 0.3 ? 1 : 0); break;
+          case 'up': g = (H > 0.3 ? 0.15 : 0.05) + (H - (H > 0.3 ? 0.15 : 0.05))*(1 - Math.cos(Math.PI*u))/2; break;
+          case 'down': g = H + (lee - H)*(1 - Math.cos(Math.PI*u))/2; break;
+          case 'lee': g = lee; break;
+          default: if(lee < 0.4){ g = u < 0.15 ? lee*(1 - u/0.15) : 0; sea = u >= 0.15; } else g = lee;
+        }
+        out.push({ x: x + d, g: Math.max(0, g), sea: sea, seg: sg[0], wet: sea && (sg[0] === 'sea' || sg[0] === 'src') });
+      }
+      x += sg[1];
+    });
+    return { pts: out, L: x };
+  }
+  function run(c, L2, L3){
+    var tr = terrain(c, L2, L3), pts = tr.pts, b = baseAir(c.lat, c.season);
+    var P = { T: b.T, q: b.RH*qs(b.T, pts[0].g), c: 0 }, z = pts[0].g, inst = 0, base = null, res = [];
+    for(var i = 0; i < pts.length; i++){
+      var p = pts[i], made = 0, conv = 0, cb = null, ct = null;
+      if(i){ made = move(P, z, p.g - z); z = p.g; }
+      if(L2 && p.wet){                                               // layer 2: the sea heats and moistens the air
+        var dT = c.sst - P.T;                                        // the whole mixed layer is heated, so it stays well below the sea temperature
+        P.T += dT*(1 - Math.exp(-DX/800));
+        var qt = 0.85*qs(c.sst, 0); if(P.q < qt) P.q += (qt - P.q)*(1 - Math.exp(-DX/400));
+        inst = clamp((dT - 3)/12, 0, 1);                             // warm sea under cold air: unstable, convective cloud
+      } else if(!p.sea) inst *= Math.exp(-DX/25);                    // the showers die out a few tens of km inland
+      else inst *= 0.9;
+      if(L2 && inst > 0.02){                                         // lift a copy to the convective cloud top and rain some of it out
+        var hc = 0.5 + 1.8*inst, cp = { T: P.T, q: P.q, c: 0 }, w = move(cp, z, hc);
+        conv = w*0.012*inst; P.q -= conv; P.T += LC*conv*0.3;
+        var td = dew(P.q, z); cb = z + Math.max(0.15, 0.125*(P.T - td)); ct = z + hc;
+      }
+      var fall = made*EFF; P.c += made - fall;
+      var drop = P.c*0.06; P.c -= drop; fall += drop;                // cloud water keeps raining out slowly
+      if(made > 1e-4 && base === null) base = z;
+      if(made <= 1e-4 && P.c < 0.02) base = null;
+      if(made > 1e-4 || P.c > 0.02){ cb = cb === null ? Math.max(p.g, base === null ? p.g : base) : Math.min(cb, Math.max(p.g, base === null ? p.g : base)); ct = Math.max(ct || 0, (L3 ? c.H : 0) + 0.7, p.g + 0.6); }
+      var pr = (fall + conv)*KP;
+      res.push({ x: p.x, g: p.g, sea: p.sea, seg: p.seg, T: P.T, q: P.q, td: dew(P.q, z), rh: rh(P.T, P.q, z), c: P.c, pr: pr, snow: P.T < 1, cb: cb, ct: ct, cloud: (made > 1e-4 ? 1 : 0) + clamp(P.c*3, 0, 0.6) + inst*0.8 });
+    }
+    return summarize(c, res, tr.L, b);
+  }
+
+  function summarize(c, r, L, b){
+    function idx(f){ for(var i = 0; i < r.length; i++) if(f(r[i], i)) return i; return r.length - 1; }
+    var iCoast = idx(function(p){ return p.seg === 'plain'; }), iSrc = Math.max(0, idx(function(p){ return p.seg !== 'src'; }) - 1);
+    var iPeak = iCoast, iLee = idx(function(p){ return p.seg === 'lee'; }) + 25;
+    for(var i = iCoast; i < r.length && r[i].seg !== 'lee'; i++) if(r[i].g > r[iPeak].g) iPeak = i;
+    function avg(a, z){ var s = 0, n = 0; for(var i = Math.max(0, a); i <= z; i++){ s += r[i].pr; n++; } return n ? s/n : 0; }
+    function snowy(a, z){ var s = 0, w = 0; for(var i = a; i <= z; i++){ w += r[i].pr; if(r[i].snow) s += r[i].pr; } return w > 0 ? s/w : 0; }
+    var wA = iCoast - 30, wZ = Math.max(iPeak, iCoast + 20), lA = iPeak + 1, lZ = Math.min(r.length - 1, iLee + 25);
+    // foehn: compare with the windward slope at the same height as the leeward ground
+    var hl = r[iLee].g, iSame = iCoast;
+    for(var k = iCoast; k <= iPeak; k++) if(Math.abs(r[k].g - hl) < Math.abs(r[iSame].g - hl)) iSame = k;
+    return { r: r, L: L, b: b, iSrc: iSrc, iCoast: iCoast, iPeak: iPeak, iLee: iLee, iSame: iSame,
+      wind: avg(wA, wZ), lee: avg(lA, lZ), windSnow: snowy(Math.max(0, wA), wZ), leeSnow: snowy(lA, lZ),
+      foehn: r[iLee].T - r[iSame].T };
+  }
+
+  /* ---------- page state and readouts ---------- */
+  var M = null, stages = [];
+  function f1(v){ return (v < 0 ? '−' : '') + Math.abs(v).toFixed(1); }
+  function f0(v){ return (v < -0.5 ? '−' : '') + Math.abs(Math.round(v)); }
+  function mm(v){ return v < 0.5 ? '几乎没有' : v < 10 ? v.toFixed(1) + ' mm' : Math.round(v) + ' mm'; }
+  function amt(v, snow){ snow = +snow; if(v < 0.5) return '几乎没有'; if(snow > 0.8) return '约 ' + Math.max(1, Math.round(v)) + ' cm 雪'; if(snow < 0.2) return mm(v) + ' 雨'; return mm(v) + ' 雨雪（高处是雪）'; }
+  var hooks = { scene: function(){}, change: function(){} };
+  function update(){
+    C.lat = +$('lat').value; C.sst = +$('sst').value; C.F = +$('fetch').value; C.H = +$('mh').value; C.lee = Math.min(+$('lee').value, Math.max(0.05, C.H - 0.2));
+    $('latLab').innerHTML = '<strong>北纬 ' + C.lat + '°</strong>';
+    $('sstLab').innerHTML = '<strong>' + f1(C.sst) + ' °C</strong>';
+    $('fetchLab').innerHTML = '<strong>' + (C.F ? C.F + ' km' : '没有海') + '</strong>';
+    $('hLab').innerHTML = '<strong>' + C.H.toFixed(1) + ' km</strong>';
+    $('leeLab').innerHTML = '<strong>' + C.lee.toFixed(1) + ' km</strong>';
+    [].forEach.call(document.querySelectorAll('[data-s]'), function(b){ b.setAttribute('aria-pressed', +b.getAttribute('data-s') === C.season ? 'true' : 'false'); });
+    M = run(C, layers.L2, layers.L3);
+    stages = [run(C, false, false), run(C, true, false), run(C, true, true)];
+    readout(); hooks.change();
+  }
+
+  function readout(){
+    var r = M.r, at = function(i){ var s = 0, n = 0; for(var k = Math.max(0, i-5); k <= Math.min(r.length-1, i+5); k++){ s += r[k].pr; n++; } return s/n; };
+    var flat = !layers.L3 || C.H < 0.3;
+    var sname = sceneKey ? document.querySelector('[data-p="' + sceneKey + '"]').textContent : '自定义';
+    $('badge').innerHTML = sname + '<small>' + (C.season < 0 ? '冬' : C.season > 0 ? '夏' : '春秋') + ' · 北纬 ' + C.lat + '° · 第 ' + (layers.L3 ? (layers.L2 ? '1+2+3' : '1+3') : (layers.L2 ? '1+2' : '1')) + ' 层</small>';
+    $('headline').textContent = '迎风侧 ' + amt(M.wind, M.windSnow) + '，背风侧 ' + amt(M.lee, M.leeSnow);
+    var names = sceneKey ? SCENES[sceneKey] : { src: '出发的地方', wind: '迎风海岸', leeN: '背风侧' };
+    var rows = [['出发 · ' + names.src, M.iSrc], ['登陆 · ' + names.wind, M.iCoast], [flat ? '中途（山被抹平了）' : '山顶 · 海拔 ' + r[M.iPeak].g.toFixed(1) + ' km', M.iPeak], ['背风侧 · ' + names.leeN, M.iLee]];
+    var h = '<span class="h">地方</span><span class="h">气温</span><span class="h">湿度</span><span class="h">降水 / 天</span>';
+    rows.forEach(function(w, n){ var p = r[w[1]], v = at(n ? w[1] : Math.max(0, w[1] - 8)); h += '<b>' + w[0] + '</b><i>' + f1(p.T) + ' °C</i><i>' + Math.round(p.rh*100) + '%</i><i>' + amt(v, p.snow) + '</i>'; });
+    $('stations').innerHTML = h;
+    var cur = !layers.L2 && !layers.L3 ? 0 : layers.L2 && !layers.L3 ? 1 : layers.L2 && layers.L3 ? 2 : -1;
+    var labs = ['只有第 1 层', '+ 第 2 层 · 海', '+ 第 3 层 · 山'], mx = Math.max(1, stages[0].wind, stages[1].wind, stages[2].wind);
+    var bh = '<div class="lab">迎风侧的降水，一层一层叠上去：</div>';
+    stages.forEach(function(s, i){
+      bh += '<div class="bar' + (i === cur ? ' cur' : '') + '"><span>' + labs[i] + (i === cur ? ' ←' : '') + '</span><span class="tr"><i class="' + (s.windSnow > 0.5 ? 'snow' : '') + '" style="width:' + (s.wind/mx*100).toFixed(1) + '%"></i></span><em>' + (s.wind < 0.5 ? '0' : Math.round(s.wind)) + ' mm</em></div>';
+    });
+    if(cur < 0) bh += '<div class="lab">现在开着山、关着海：空气没被海改造过，直接去撞山。</div>';
+    $('bars').innerHTML = bh;
+    var t;
+    if(flat) t = '没有山，空气走到哪里都差不多，也就没有迎风坡和背风坡之分。';
+    else if(M.foehn < 0.6) t = '这次空气爬坡时几乎没有凝结，翻山前后差不多。焚风和雨影要先在迎风坡下过雨雪才会出现。';
+    else t = '背风侧（海拔 ' + r[M.iLee].g.toFixed(1) + ' km）比迎风坡同样高度的地方暖 ' + f1(M.foehn) + ' °C，湿度从 ' + Math.round(r[M.iSame].rh*100) + '% 降到 ' + Math.round(r[M.iLee].rh*100) + '%。这是焚风：水在迎风坡落掉了，下山时一路按干空气的速度升温。';
+    $('foehn').textContent = t;
+    drawProf();
+  }
+
+  /* ---------- 2D profile ---------- */
+  var pc = $('prof'), px = pc.getContext('2d'), PW = 0, PH = 0;
+  var FONT = '"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif';
+  function sizeProf(){
+    var d = Math.min(window.devicePixelRatio || 1, 2); PW = pc.clientWidth; PH = pc.clientHeight;
+    pc.width = Math.round(PW*d); pc.height = Math.round(PH*d); px.setTransform(d, 0, 0, d, 0, 0); if(M) drawProf();
+  }
+  function drawProf(){
+    if(!PW || !M) return;
+    var c = px, r = M.r, L = M.L, l = 56, rt = 14, W = PW - l - rt;
+    var X = function(x){ return l + x/L*W; };
+    c.clearRect(0, 0, PW, PH);
+    c.font = '11px ' + FONT; c.textBaseline = 'middle';
+    // strip 1: terrain and cloud
+    var t1 = 10, h1 = PH*0.4, zmax = Math.max(2, (layers.L3 ? C.H : 0) + 1.2);
+    var Y = function(z){ return t1 + h1 - z/zmax*h1; };
+    for(var i = 0; i < r.length; i++){
+      var p = r[i]; if(!p.cloud || p.cb === null || p.cloud < 0.15) continue;
+      c.fillStyle = 'rgba(110,116,125,' + clamp(p.cloud*0.35, 0.08, 0.5).toFixed(2) + ')';
+      c.fillRect(X(p.x), Y(p.ct), Math.max(1, W/r.length*1.05), Y(p.cb) - Y(p.ct));
+    }
+    c.beginPath(); c.moveTo(X(0), Y(0));
+    r.forEach(function(p){ c.lineTo(X(p.x), Y(p.g)); }); c.lineTo(X(L), Y(0)); c.closePath();
+    c.fillStyle = '#b9a77f'; c.fill();
+    r.forEach(function(p, i){ if(p.sea){ c.fillStyle = '#4f8fb5'; c.fillRect(X(p.x), Y(0) - 3, W/r.length*1.05 + 0.5, 3); } });
+    c.strokeStyle = '#1d1e1b'; c.lineWidth = 1; c.beginPath(); c.moveTo(l, Y(0)); c.lineTo(l + W, Y(0)); c.stroke();
+    c.fillStyle = '#4a4c45'; c.textAlign = 'right';
+    for(var z = 0; z <= zmax; z += zmax > 4 ? 2 : 1) c.fillText(z + ' km', l - 6, Y(z));
+    c.textAlign = 'left'; c.fillText('风 →', l + 4, t1 + 8);
+    // strip 2: temperature and dew point
+    var t2 = t1 + h1 + 20, h2 = PH*0.24, tl = Infinity, th = -Infinity;
+    r.forEach(function(p){ tl = Math.min(tl, p.td, p.T); th = Math.max(th, p.T); });
+    tl = Math.floor(tl/5)*5; th = Math.ceil(th/5)*5 + (th % 5 === 0 ? 5 : 0); if(th - tl < 10) th = tl + 10;
+    var YT = function(v){ return t2 + h2 - (v - tl)/(th - tl)*h2; };
+    c.strokeStyle = 'rgba(29,30,27,.15)'; c.beginPath(); c.moveTo(l, YT(0)); c.lineTo(l + W, YT(0)); c.stroke();
+    [['td', '#2b6ea8'], ['T', '#d4402a']].forEach(function(k){
+      c.strokeStyle = k[1]; c.lineWidth = 1.8; c.beginPath();
+      r.forEach(function(p, i){ var y = YT(p[k[0]]); i ? c.lineTo(X(p.x), y) : c.moveTo(X(p.x), y); }); c.stroke();
+    });
+    c.fillStyle = '#4a4c45'; c.textAlign = 'right'; c.fillText(th + '°', l - 6, YT(th)); c.fillText(tl + '°', l - 6, YT(tl));
+    if(tl < 0 && th > 0) c.fillText('0°', l - 6, YT(0));
+    // strip 3: precipitation
+    var t3 = t2 + h2 + 18, h3 = PH - t3 - 18, pm = 1;
+    r.forEach(function(p){ pm = Math.max(pm, p.pr); });
+    pm = pm < 10 ? 10 : pm < 50 ? 50 : Math.ceil(pm/100)*100;
+    if(!c._pat){ var pt = document.createElement('canvas'); pt.width = pt.height = 6; var g = pt.getContext('2d'); g.fillStyle = '#e9f2f6'; g.fillRect(0, 0, 6, 6); g.strokeStyle = '#7fa6bd'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, 6); g.lineTo(6, 0); g.stroke(); c._pat = c.createPattern(pt, 'repeat'); }
+    r.forEach(function(p){ if(p.pr < 0.05) return; var hh = p.pr/pm*h3; c.fillStyle = p.snow ? c._pat : '#3f8fb5'; c.fillRect(X(p.x), t3 + h3 - hh, W/r.length*1.05 + 0.4, hh); });
+    c.strokeStyle = '#1d1e1b'; c.lineWidth = 1; c.beginPath(); c.moveTo(l, t3 + h3); c.lineTo(l + W, t3 + h3); c.stroke();
+    c.fillStyle = '#4a4c45'; c.textAlign = 'right'; c.fillText(pm + ' mm', l - 6, t3 + 4); c.fillText('0', l - 6, t3 + h3);
+    // ticks: stations and distance
+    c.textAlign = 'center'; c.fillStyle = '#1d1e1b';
+    [[M.iCoast, '登陆'], [M.iPeak, '山顶'], [M.iLee, '背风侧']].forEach(function(s){
+      if(s[1] === '山顶' && (!layers.L3 || C.H < 0.3)) return;
+      var x = X(r[s[0]].x); c.strokeStyle = 'rgba(29,30,27,.3)'; c.setLineDash([3, 3]); c.beginPath(); c.moveTo(x, t1); c.lineTo(x, t3 + h3); c.stroke(); c.setLineDash([]);
+      c.fillText(s[1], x, PH - 7);
+    });
+    c.fillStyle = '#4a4c45'; c.textAlign = 'left'; c.fillText('0 km', l, PH - 7); c.textAlign = 'right'; c.fillText(Math.round(L) + ' km', l + W, PH - 7);
+  }
+
+  /* ---------- controls ---------- */
+  function setLayer(k, on){ layers[k] = on; $(k).setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  function custom(){ sceneKey = null; [].forEach.call(document.querySelectorAll('[data-p]'), function(b){ b.setAttribute('aria-pressed', 'false'); }); $('sceneText').textContent = '自定义：地名不再对应真实地点。'; }
+  [].forEach.call(document.querySelectorAll('[data-p]'), function(b){
+    b.addEventListener('click', function(){ stopStack(); loadScene(b.getAttribute('data-p')); update(); hooks.scene(); });
+  });
+  ['lat', 'sst', 'fetch', 'mh', 'lee'].forEach(function(id){
+    $(id).addEventListener('input', function(){ if(sceneKey) custom(); update(); if(id === 'fetch' || id === 'mh' || id === 'lee') hooks.scene(); });
+  });
+  [].forEach.call(document.querySelectorAll('[data-s]'), function(b){
+    b.addEventListener('click', function(){ if(sceneKey) custom(); C.season = +b.getAttribute('data-s'); update(); });
+  });
+  ['L2', 'L3'].forEach(function(k){ $(k).addEventListener('click', function(){ stopStack(); setLayer(k, !layers[k]); update(); hooks.scene(); }); });
+  var STEPS = [
+    [false, false, '只有第 1 层：空气保持出发时的样子。海不和它交换，山也被抹平，所以一路上几乎什么都不发生。'],
+    [true, false, '加上第 2 层：空气经过海面，被加热、吸进水汽。海比空气暖得多时，空气会自己翻滚成积云，在海上和沿岸下阵雨或阵雪。'],
+    [true, true, '加上第 3 层：山逼空气往上爬，迎风坡的雨雪一下多了很多。翻过山以后，空气变干、变暖。']
+  ];
+  var stackT = [];
+  function stopStack(){ stackT.forEach(clearTimeout); stackT = []; $('stack').setAttribute('aria-pressed', 'false'); }
+  $('stack').addEventListener('click', function(){
+    stopStack(); $('stack').setAttribute('aria-pressed', 'true');
+    STEPS.forEach(function(s, i){
+      stackT.push(setTimeout(function(){
+        setLayer('L2', s[0]); setLayer('L3', s[1]); $('stackText').textContent = s[2]; update(); hooks.scene();
+        if(i === STEPS.length - 1) $('stack').setAttribute('aria-pressed', 'false');
+      }, i*3200));
+    });
+  });
+
+  loadScene('hokkaido');
+  sizeProf(); update();
+  if(window.ResizeObserver) new ResizeObserver(sizeProf).observe(pc); else window.addEventListener('resize', sizeProf);
+
+  /* ---------- 3D ---------- */
+  var renderer = null, stage = $('stage');
+  if(typeof THREE !== 'undefined'){ try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch(e){ renderer = null; } }
+  if(!renderer){ $('nogl').hidden = false; }
+  else (function(){
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    var dom = renderer.domElement; dom.style.touchAction = 'none';
+    stage.insertBefore(dom, stage.firstChild);
+    var scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+    var VIEWS = { tilt: [0.38, 0.4], side: [0, 0.04] }, cam = { th: 0.38, ph: 0.4, tth: 0.38, tph: 0.4, rad: 7 };
+    function placeCam(){ camera.position.set(cam.rad*Math.cos(cam.ph)*Math.sin(cam.th), 0.2 + cam.rad*Math.sin(cam.ph), cam.rad*Math.cos(cam.ph)*Math.cos(cam.th)); camera.lookAt(0, 0.2, 0); }
+    function resize(){
+      var W = stage.clientWidth || 360, H = stage.clientHeight || 300;
+      renderer.setSize(W, H); camera.aspect = W/H; camera.updateProjectionMatrix();
+      cam.rad = Math.max(8, 10.5/camera.aspect); placeCam();
+      if(window.Poketto) Poketto.repaint();
+    }
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    var sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(-3, 4, 3); scene.add(sun);
+    var XW = 4.8, ZW = 0.7, VS = 0.22;
+    function WX(x){ return -XW/2 + XW*x/M.L; }
+    function gAt(x){ var r = M.r, i = clamp(Math.round(x/DX), 0, r.length - 1); return r[i]; }
+    var NX = 240, NZ = 22, seed = 3;
+    function rnd(){ seed = (seed*16807) % 2147483647; return seed/2147483647; }
+    var bump = []; for(var k = 0; k < (NX+1)*(NZ+1); k++) bump.push(rnd());
+    // terrain surface
+    var tg = new THREE.BufferGeometry(), tpos = new Float32Array((NX+1)*(NZ+1)*3), tcol = new Float32Array((NX+1)*(NZ+1)*3), tidx = [];
+    for(var j = 0; j < NZ; j++) for(var i = 0; i < NX; i++){ var a = j*(NX+1) + i, b = a + 1, c2 = a + NX + 1, d = c2 + 1; tidx.push(a, c2, b, b, c2, d); }
+    tg.setIndex(tidx); tg.setAttribute('position', new THREE.BufferAttribute(tpos, 3)); tg.setAttribute('color', new THREE.BufferAttribute(tcol, 3));
+    var terr = new THREE.Mesh(tg, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })); scene.add(terr);
+    // front skirt so the strip reads as a cut-away block
+    var sg = new THREE.BufferGeometry(), spos = new Float32Array((NX+1)*2*3), scol = new Float32Array((NX+1)*2*3), sidx = [];
+    for(var i2 = 0; i2 < NX; i2++){ sidx.push(i2, i2 + NX + 1, i2 + 1, i2 + 1, i2 + NX + 1, i2 + NX + 2); }
+    sg.setIndex(sidx); sg.setAttribute('position', new THREE.BufferAttribute(spos, 3)); sg.setAttribute('color', new THREE.BufferAttribute(scol, 3));
+    scene.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })));
+    var cT = new THREE.Color();
+    function landCol(h, snowy, out, o){
+      var lo = new THREE.Color('#8a9a5b'), mid = new THREE.Color('#a8926a'), hi = new THREE.Color('#8c8478');
+      cT.copy(lo).lerp(mid, clamp(h/1.2, 0, 1)); if(h > 1.2) cT.lerp(hi, clamp((h - 1.2)/2, 0, 1));
+      if(snowy > 0) cT.lerp(new THREE.Color('#f4f6f7'), snowy);
+      out[o] = cT.r; out[o+1] = cT.g; out[o+2] = cT.b;
+    }
+    function seaCol(t, out, o){ cT.set('#2f5f86').lerp(new THREE.Color('#3f9fb0'), clamp(t/30, 0, 1)); out[o] = cT.r; out[o+1] = cT.g; out[o+2] = cT.b; }
+    function buildTerrain(){
+      for(var i = 0; i <= NX; i++){
+        var x = M.L*i/NX, p = gAt(x), mtn = p.seg === 'up' || p.seg === 'down';
+        var snowy = p.sea ? 0 : (p.T < 0 ? 0.55 : 0) + (p.snow && p.pr > 0.5 ? 0.45 : 0);
+        for(var j = 0; j <= NZ; j++){
+          var k = j*(NX+1) + i, zz = -ZW + 2*ZW*j/NZ, h = p.g;
+          if(!p.sea) h = Math.max(0.02, h*(mtn ? 0.82 + 0.3*bump[k] : 1) + 0.03*bump[k]);
+          if(p.sea) h = 0;
+          tpos[k*3] = WX(x); tpos[k*3+1] = h*VS; tpos[k*3+2] = zz;
+          if(p.sea) seaCol(C.sst, tcol, k*3); else landCol(h, snowy, tcol, k*3);
+          if(j === NZ){
+            spos[i*3] = WX(x); spos[i*3+1] = h*VS; spos[i*3+2] = ZW;
+            spos[(i+NX+1)*3] = WX(x); spos[(i+NX+1)*3+1] = -0.12; spos[(i+NX+1)*3+2] = ZW;
+            cT.set(p.sea ? '#24476e' : '#7a6a50'); scol[i*3] = cT.r; scol[i*3+1] = cT.g; scol[i*3+2] = cT.b;
+            cT.set(p.sea ? '#1f3a5f' : '#5c4f3b'); scol[(i+NX+1)*3] = cT.r; scol[(i+NX+1)*3+1] = cT.g; scol[(i+NX+1)*3+2] = cT.b;
+          }
+        }
+      }
+      [tg, sg].forEach(function(g){ g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; g.computeBoundingSphere(); });
+      tg.computeVertexNormals();
+    }
+
+    /* particles */
+    function dotTex(soft){
+      var c = document.createElement('canvas'); c.width = c.height = soft ? 128 : 32;
+      var x = c.getContext('2d'), r = c.width/2, gr = x.createRadialGradient(r, r, 0, r, r, r);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(soft ? .45 : .7, 'rgba(255,255,255,' + (soft ? .7 : 1) + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = gr; x.fillRect(0, 0, c.width, c.height); return new THREE.CanvasTexture(c);
+    }
+    var DOT = dotTex(false), PUFF = dotTex(true);
+    function points(n, size){
+      var g = new THREE.BufferGeometry(), pos = new Float32Array(n*3), col = new Float32Array(n*3);
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      var m = new THREE.PointsMaterial({ size: size, map: DOT, vertexColors: true, transparent: true, depthWrite: false, alphaTest: 0.05 });
+      var o = new THREE.Points(g, m); o.frustumCulled = false; scene.add(o);
+      return { n: n, pos: pos, col: col, g: g, o: o, s: new Float32Array(n), u: new Float32Array(n), z: new Float32Array(n), k: new Int32Array(n) };
+    }
+    var air = points(420, 0.07), fall = points(520, 0.045);
+    for(var a = 0; a < air.n; a++){ air.s[a] = rnd(); air.u[a] = rnd(); air.z[a] = (rnd()*2 - 1)*ZW*0.9; }
+    for(var f2 = 0; f2 < fall.n; f2++){ fall.s[f2] = rnd(); fall.u[f2] = rnd(); fall.z[f2] = (rnd()*2 - 1)*ZW*0.85; fall.k[f2] = -1; }
+    var cDry = new THREE.Color('#b8864a'), cWet = new THREE.Color('#1f5f9a');
+    function moveAir(dt){
+      air.o.visible = show.air; if(!show.air) return;
+      for(var i = 0; i < air.n; i++){
+        var s = (air.s[i] + dt*0.05) % 1; air.s[i] = s;
+        var p = gAt(s*M.L), k = i*3;
+        air.pos[k] = WX(s*M.L); air.pos[k+1] = (p.g + 0.12 + air.u[i]*0.7)*VS; air.pos[k+2] = air.z[i];
+        cT.copy(cDry).lerp(cWet, clamp((p.rh - 0.3)/0.7, 0, 1)); air.col[k] = cT.r; air.col[k+1] = cT.g; air.col[k+2] = cT.b;
+      }
+      air.g.attributes.position.needsUpdate = true; air.g.attributes.color.needsUpdate = true;
+    }
+    var prCum = [], prTot = 0;
+    function pickPr(){ var v = rnd()*prTot, lo = 0, hi = prCum.length - 1; while(lo < hi){ var m = (lo + hi) >> 1; if(prCum[m] < v) lo = m + 1; else hi = m; } return lo; }
+    function moveFall(dt){
+      fall.o.visible = show.cloud && prTot > 0; if(!fall.o.visible) return;
+      var r = M.r, nAct = Math.round(fall.n*clamp(Math.sqrt(prTot/400), 0.15, 1));
+      for(var i = 0; i < fall.n; i++){
+        var k = i*3;
+        if(i >= nAct){ fall.pos[k+1] = -9; continue; }
+        if(fall.k[i] < 0 || fall.k[i] >= r.length || fall.u[i] <= 0){ fall.k[i] = pickPr(); fall.u[i] = 0.4 + rnd()*0.6; fall.z[i] = (rnd()*2 - 1)*ZW*0.85; }
+        var p = r[fall.k[i]], top = (p.cb !== null ? p.cb : p.g + 0.8);
+        fall.u[i] -= dt*(p.snow ? 0.25 : 1.1);
+        var y = p.g + (top - p.g)*fall.u[i], wob = p.snow ? Math.sin(fall.u[i]*20 + i)*0.02 : 0;
+        fall.pos[k] = WX(p.x) + wob; fall.pos[k+1] = y*VS; fall.pos[k+2] = fall.z[i];
+        cT.set(p.snow ? '#ffffff' : '#3f8fb5'); fall.col[k] = cT.r; fall.col[k+1] = cT.g; fall.col[k+2] = cT.b;
+      }
+      fall.g.attributes.position.needsUpdate = true; fall.g.attributes.color.needsUpdate = true;
+    }
+    // clouds: a pool of soft sprites placed where the model has cloud
+    var puffs = [];
+    for(var q = 0; q < 90; q++){ var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: PUFF, color: 0xdfe2e6, transparent: true, depthWrite: false })); sp.visible = false; scene.add(sp); puffs.push({ sp: sp, r1: rnd(), r2: rnd(), r3: rnd() }); }
+    function placeClouds(){
+      var r = M.r, cum = [], tot = 0;
+      r.forEach(function(p){ var w = p.cb !== null && p.cloud > 0.15 ? p.cloud*(p.ct - p.cb + 0.2) : 0; tot += w; cum.push(tot); });
+      prCum = []; prTot = 0; r.forEach(function(p){ prTot += p.pr; prCum.push(prTot); });
+      var n = Math.round(puffs.length*clamp(tot/60, 0.25, 1));
+      puffs.forEach(function(pf, i){
+        if(tot <= 0 || i >= n || !show.cloud){ pf.sp.visible = false; return; }
+        var v = pf.r1*tot, lo = 0, hi = cum.length - 1; while(lo < hi){ var m = (lo + hi) >> 1; if(cum[m] < v) lo = m + 1; else hi = m; }
+        var p = r[lo], y = p.cb + (p.ct - p.cb)*pf.r2, sc = clamp((p.ct - p.cb)*VS*0.9, 0.12, 0.5)*(0.7 + 0.6*pf.r3);
+        pf.sp.position.set(WX(p.x), y*VS, (pf.r3*2 - 1)*ZW*0.7); pf.sp.scale.set(sc*1.5, sc, 1);
+        pf.sp.material.color.set(p.pr > 5 ? '#a9aeb5' : '#e3e6ea'); pf.sp.material.opacity = clamp(p.cloud, 0.3, 0.9);
+        pf.sp.visible = true;
+      });
+    }
+
+    /* labels */
+    var labels = [];
+    function makeLabel(col, h){
+      var c = document.createElement('canvas'), x = c.getContext('2d'), tex = new THREE.CanvasTexture(c);
+      var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })); s.renderOrder = 10; scene.add(s);
+      var L = { s: s, c: c, x: x, tex: tex, col: col, h: h, txt: '' }; labels.push(L); return L;
+    }
+    function setLabel(L, txt){
+      if(L.txt === txt) return; L.txt = txt;
+      var px = 44, x = L.x; x.font = '900 ' + px + 'px ' + FONT; var w = Math.ceil(x.measureText(txt).width) + 24;
+      L.c.width = w; L.c.height = 64; x.font = '900 ' + px + 'px ' + FONT; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.lineJoin = 'round'; x.lineWidth = 9; x.strokeStyle = 'rgba(239,238,233,.95)'; x.strokeText(txt, w/2, 34); x.fillStyle = L.col; x.fillText(txt, w/2, 34);
+      L.tex.needsUpdate = true; L.s.scale.set(L.h*w/64, L.h, 1);
+    }
+    var lSrc = makeLabel('#1d1e1b', 0.13), lSea = makeLabel('#1f4f80', 0.14), lWind = makeLabel('#1d1e1b', 0.13), lLee = makeLabel('#1d1e1b', 0.13);
+    var lArrow = makeLabel('#1d1e1b', 0.15), lFoehn = makeLabel('#d4402a', 0.14), lPeak = makeLabel('#4a4c45', 0.11);
+    function short(s){ return s.split('：')[0]; }
+    function placeLabels(){
+      var r = M.r, nm = sceneKey ? SCENES[sceneKey] : { src: '大陆', sea: '海', wind: '迎风坡', leeN: '背风侧' };
+      var iSea = Math.round((M.iSrc + M.iCoast)/2);
+      setLabel(lSrc, short(nm.src)); lSrc.s.position.set(WX(r[Math.round(M.iSrc/2)].x), 0.3, ZW*0.2);
+      setLabel(lSea, C.F > 0 ? nm.sea + (layers.L2 ? '' : '（不交换）') : ''); lSea.s.position.set(WX(r[iSea].x), 0.12, ZW*0.4); lSea.s.visible = C.F > 0;
+      setLabel(lWind, short(nm.wind)); lWind.s.position.set(WX(r[M.iCoast].x), (r[M.iCoast].g)*VS + 0.12, ZW*0.85);
+      setLabel(lLee, short(nm.leeN)); lLee.s.position.set(WX(r[M.iLee].x), r[M.iLee].g*VS + 0.12, ZW*0.85);
+      setLabel(lArrow, '风 →'); lArrow.s.position.set(-XW/2 + 0.25, 1.0, 0);
+      var flat = !layers.L3 || C.H < 0.3;
+      setLabel(lPeak, flat ? '' : r[M.iPeak].g.toFixed(1) + ' km'); lPeak.s.position.set(WX(r[M.iPeak].x), r[M.iPeak].g*VS + 0.14, -ZW*0.3); lPeak.s.visible = !flat;
+      setLabel(lFoehn, '焚风 +' + M.foehn.toFixed(1) + ' °C'); lFoehn.s.position.set(WX(r[M.iLee].x), r[M.iLee].g*VS + 0.32, 0);
+      lFoehn.s.visible = !flat && M.foehn >= 1.5;
+      labels.forEach(function(L){ if(!show.text) L.s.visible = false; else if(L !== lSea && L !== lPeak && L !== lFoehn) L.s.visible = true; });
+    }
+
+    /* controls, loop */
+    var show = { air: true, cloud: true, text: true };
+    [['tAir', 'air'], ['tCloud', 'cloud'], ['tText', 'text']].forEach(function(p){ $(p[0]).addEventListener('change', function(){ show[p[1]] = this.checked; placeClouds(); placeLabels(); }); });
+    var viewBtns = document.querySelectorAll('[data-v]');
+    [].forEach.call(viewBtns, function(b){ b.addEventListener('click', function(){ var v = VIEWS[b.getAttribute('data-v')]; cam.tth = v[0]; cam.tph = v[1]; [].forEach.call(viewBtns, function(o){ o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); }); }); });
+    var dragging = false, lx = 0, ly = 0;
+    dom.addEventListener('pointerdown', function(ev){ dragging = true; lx = ev.clientX; ly = ev.clientY; dom.setPointerCapture(ev.pointerId); });
+    dom.addEventListener('pointermove', function(ev){
+      if(!dragging) return;
+      cam.th = clamp(cam.th - (ev.clientX - lx)*0.007, -1.2, 1.2); cam.ph = clamp(cam.ph + (ev.clientY - ly)*0.007, -0.05, 1.4);
+      cam.tth = cam.th; cam.tph = cam.ph; lx = ev.clientX; ly = ev.clientY; placeCam();
+      [].forEach.call(viewBtns, function(o){ o.setAttribute('aria-pressed', 'false'); });
+    });
+    dom.addEventListener('pointerup', function(){ dragging = false; });
+    dom.addEventListener('pointercancel', function(){ dragging = false; });
+    hooks.change = function(){ buildTerrain(); placeClouds(); placeLabels(); };
+    hooks.change();
+    resize();
+    if(window.ResizeObserver) new ResizeObserver(resize).observe(stage); else window.addEventListener('resize', resize);
+    var last = performance.now();
+    function frame(now){
+      var dt = Math.min(0.1, (now - last)/1000); last = now;
+      if(Math.abs(cam.th - cam.tth) > 1e-4 || Math.abs(cam.ph - cam.tph) > 1e-4){ cam.th += (cam.tth - cam.th)*0.12; cam.ph += (cam.tph - cam.ph)*0.12; placeCam(); }
+      moveAir(dt); moveFall(dt);
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+})();
+</script>
+</body>
+</html>

@@ -104,8 +104,19 @@
     "description": "一块可以转着看的 3D 赤道太平洋：拖动海温指数，看信风、暖水、温跃层和雨带怎样一起从拉尼娜走到厄尔尼诺；放一遍三年的循环看反馈怎样放大，再看世界各地会偏湿还是偏干。",
     "url": "tools/enso.html",
     "related": [
+      "tools/rain-shadow.html",
       "tools/seasons.html",
       "tools/earth-directions.html"
+    ]
+  },
+  {
+    "title": "同一阵风，隔一座山",
+    "subject": "地理",
+    "description": "天气是几层尺度叠出来的：先只看纬度和季节，再加一片海，再加一座山，看同一团空气一路怎样变湿、成云、在迎风坡卸下雨雪，翻山后又怎样变成又暖又干的焚风。",
+    "url": "tools/rain-shadow.html",
+    "related": [
+      "tools/enso.html",
+      "tools/seasons.html"
     ]
   }
 ]
